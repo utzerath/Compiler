@@ -1,65 +1,24 @@
 #include "AST.h"
+#include <stdlib.h>
+#include <stdio.h>
+
 int indentValue = 2;
 
 void printIndent(int level) {
-    for (int i = 0; i < level-1; i++) {
+    for (int i = 0; i < level - 1; i++) {
         printf("--");
     }
 }
 
-
 void traverseAST(ASTNode* node, int level) {
     if (!node) {
-        printf ("Nothing to traverse\n");
+        printf("Nothing to traverse\n");
         return;
     }
 
     printIndent(level);
-    //printf("Traversing node of type %d\n", node->type);
-    
+
     switch (node->type) {
-    typedef struct ASTNode {
-        int type; // Add the "type" field
-        union {
-            struct {
-                struct ASTNode* varDeclList;
-                struct ASTNode* stmtList;
-            } program;
-            struct {
-                struct ASTNode* varDecl;
-                struct ASTNode* varDeclList;
-            } varDeclList;
-            struct {
-                char* varType;
-                char* varName;
-            } varDecl;
-            struct {
-                int number;
-            } simpleExpr;
-            struct {
-                char* name;
-            } simpleID;
-            struct {
-                char operator;
-                struct ASTNode* left;
-                struct ASTNode* right;
-            } expr;
-            struct {
-                struct ASTNode* stmt;
-                struct ASTNode* stmtList;
-            } stmtList;
-            struct {
-                char* varName;
-                char* operator;
-                struct ASTNode* expr;
-            } assignStmt;
-            struct {
-                char operator;
-                struct ASTNode* left;
-                struct ASTNode* right;
-            } binOp;
-        };
-    } ASTNode;
         case NodeType_Program:
             printIndent(level);
             printf("Program\n");
@@ -68,7 +27,7 @@ void traverseAST(ASTNode* node, int level) {
             break;
         case NodeType_VarDeclList:
             printIndent(level);
-            //printf("VarDeclList\n");
+            printf("VarDeclList\n");
             traverseAST(node->varDeclList.varDecl, level + 1);
             traverseAST(node->varDeclList.varDeclList, level + 1);
             break;
@@ -78,12 +37,10 @@ void traverseAST(ASTNode* node, int level) {
             break;
         case NodeType_SimpleExpr:
             printIndent(level);
-            //printf("SimpleExpr: %d\n", node->simpleExpr.number);
             printf("%d\n", node->simpleExpr.number);
             break;
         case NodeType_SimpleID:
             printIndent(level);
-            //printf("SimpleID: %d\n", node->simpleID.name);
             printf("%s\n", node->simpleID.name);
             break;
         case NodeType_Expr:
@@ -94,7 +51,7 @@ void traverseAST(ASTNode* node, int level) {
             break;
         case NodeType_StmtList:
             printIndent(level);
-            //printf("StmtList\n");
+            printf("StmtList\n");
             traverseAST(node->stmtList.stmt, level + 1);
             traverseAST(node->stmtList.stmtList, level + 1);
             break;
@@ -109,6 +66,10 @@ void traverseAST(ASTNode* node, int level) {
             traverseAST(node->binOp.left, level + 1);
             traverseAST(node->binOp.right, level + 1);
             break;
+        default:
+            printIndent(level);
+            printf("Unknown node type\n");
+            break;
     }
 }
 
@@ -117,42 +78,41 @@ void freeAST(ASTNode* node) {
 
     switch (node->type) {
         case NodeType_Program:
-            free(node->program.varDeclList);
-            free(node->program.stmtList);
+            freeAST(node->program.varDeclList);
+            freeAST(node->program.stmtList);
             break;
         case NodeType_VarDeclList:
-            free(node->varDeclList.varDecl);
-            free(node->varDeclList.varDeclList);
+            freeAST(node->varDeclList.varDecl);
+            freeAST(node->varDeclList.varDeclList);
             break;
         case NodeType_VarDecl:
-            free(node->varDecl.varType);
-            free(node->varDecl.varName);
+            free(node->varDecl.varType);  // Only free if dynamically allocated
+            free(node->varDecl.varName);  // Only free if dynamically allocated
             break;
-        
         case NodeType_SimpleExpr:
-            //free((node->simpleExpr));
+            // No dynamic memory to free in simple expression
             break;
         case NodeType_SimpleID:
-            //free((node->simpleID));
+            // Free the identifier name if dynamically allocated
+            free(node->simpleID.name);
             break;
         case NodeType_Expr:
-            free(node->expr.left);
-            free(node->expr.right);
-            //free(node->expr.operator);
+            freeAST(node->expr.left);
+            freeAST(node->expr.right);
             break;
         case NodeType_StmtList:
-            free(node->stmtList.stmt);
-            free(node->stmtList.stmtList);
+            freeAST(node->stmtList.stmt);
+            freeAST(node->stmtList.stmtList);
             break;
         case NodeType_AssignStmt:
-            free(node->assignStmt.varName);
-            free(node->assignStmt.operator);
+            free(node->assignStmt.varName);  // Only free if dynamically allocated
             free(node->assignStmt.expr);
             break;
         case NodeType_BinOp:
-            free(node->binOp.left);
-            free(node->binOp.right);
-            //free(node->binOp.operator);
+            freeAST(node->binOp.left);
+            freeAST(node->binOp.right);
+            break;
+        default:
             break;
     }
 
@@ -162,13 +122,11 @@ void freeAST(ASTNode* node) {
 ASTNode* createNode(NodeType type) {
     ASTNode* newNode = (ASTNode*)malloc(sizeof(ASTNode));
     if (newNode == NULL) {
-        // Handle memory allocation failure if needed
-        return NULL;
+        return NULL;  // Handle memory allocation failure
     }
 
     newNode->type = type;
 
-    // Initialize the node based on its type
     switch (type) {
         case NodeType_Program:
             newNode->program.varDeclList = NULL;
@@ -183,11 +141,10 @@ ASTNode* createNode(NodeType type) {
             newNode->varDecl.varName = NULL;
             break;
         case NodeType_SimpleExpr:
-            // Initialize the number to NULL
-            newNode->simpleExpr.number = '\0';
+            newNode->simpleExpr.number = 0;
             break;
         case NodeType_SimpleID:
-            //newNode->simpleID.name = NULL;
+            newNode->simpleID.name = NULL;
             break;
         case NodeType_Expr:
             newNode->expr.operator = '\0';  // Placeholder value
@@ -195,11 +152,11 @@ ASTNode* createNode(NodeType type) {
             newNode->expr.right = NULL;
             break;
         case NodeType_StmtList:
-            newNode->stmtList.stmt = NULL;  // Example initialization
+            newNode->stmtList.stmt = NULL;
             newNode->stmtList.stmtList = NULL;
             break;
         case NodeType_AssignStmt:
-            newNode->assignStmt.operator = NULL;  // Example initialization
+            newNode->assignStmt.operator = NULL;
             newNode->assignStmt.varName = NULL;
             newNode->assignStmt.expr = NULL;
             break;
@@ -208,7 +165,8 @@ ASTNode* createNode(NodeType type) {
             newNode->binOp.left = NULL;
             newNode->binOp.right = NULL;
             break;
-        // Add more cases as necessary for other node types
+        default:
+            break;
     }
 
     return newNode;

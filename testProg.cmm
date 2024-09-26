@@ -5,7 +5,7 @@ int b;
 int c;
 x = 1;
 a = 12;
-b = 23 * 10 / 5;
+b = 23 + 10 + 5;
 x = a + a + 1;
 y = x + a + b + c + a + 5;
 write x;

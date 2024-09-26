@@ -35,14 +35,23 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             semanticAnalysis(node->stmtList.stmtList, symTab);
             break;
         
-        case NodeType_AssignStmt:
-            // Ensure the variable being assigned to has been declared
-            if (lookupSymbol(symTab, node->assignStmt.varName) == NULL) {
-                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->assignStmt.varName);
-            }
-            // Check the expression on the right-hand side
-            semanticAnalysis(node->assignStmt.expr, symTab);
-            break;
+        case NodeType_AssignStmt: {
+            printf("Generating TAC for assignment statement\n");
+
+            // Generate TAC for the right-hand side expression
+            char* rhs = createOperand(node->assignStmt.expr);
+
+            // Generate the TAC for the assignment
+            TAC* tac = (TAC*)malloc(sizeof(TAC));
+            tac->arg1 = rhs;
+            tac->op = strdup("=");
+            tac->result = strdup(node->assignStmt.varName);
+            tac->next = NULL;
+
+            appendTAC(&tacHead, tac);
+        break;
+        }
+
         
         case NodeType_Expr:
             // Check the left and right expressions
@@ -50,18 +59,25 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             semanticAnalysis(node->expr.right, symTab);
             break;
         
-        case NodeType_BinOp:
-            // Ensure both operands are declared variables
-            if (lookupSymbol(symTab, node->binOp.left->simpleID.name) == NULL) {
-                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.left->simpleID.name);
-            }
-            if (lookupSymbol(symTab, node->binOp.right->simpleID.name) == NULL) {
-                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.right->simpleID.name);
-            }
-            // Recursively check the expressions
+        case NodeType_BinOp: {
+            printf("Performing semantic analysis on binary operation\n");
+
+            // First, perform semantic analysis on both operands
             semanticAnalysis(node->binOp.left, symTab);
             semanticAnalysis(node->binOp.right, symTab);
+
+            // Check if both operands are valid identifiers
+            if (node->binOp.left->type == NodeType_SimpleID &&
+                lookupSymbol(symTab, node->binOp.left->simpleID.name) == NULL) {
+                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.left->simpleID.name);
+            }
+            if (node->binOp.right->type == NodeType_SimpleID &&
+                lookupSymbol(symTab, node->binOp.right->simpleID.name) == NULL) {
+                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.right->simpleID.name);
+            }
             break;
+            }
+
         
         case NodeType_SimpleID:
             // Check if the variable has been declared before use
@@ -113,10 +129,14 @@ TAC* generateTACForExpr(ASTNode* expr) {
             printf("Generating TAC for expression\n");
             instruction->arg1 = createOperand(expr->expr.left);
             instruction->arg2 = createOperand(expr->expr.right);
-            instruction->op = strdup("+"); //strdup(expr->expr.operator);
+    
+            // Capture the operator from the AST node
+            char operatorStr[2] = { expr->expr.operator, '\0' }; // Make it a string
+            instruction->op = strdup(operatorStr);
             instruction->result = createTempVar();
             break;
-        }
+            }
+
 
         case NodeType_SimpleExpr: {
             printf("Generating TAC for simple expression\n");
@@ -153,13 +173,20 @@ TAC* generateTACForExpr(ASTNode* expr) {
 }
 // Function to create a new temporary variable for TAC
 char* createTempVar() {
-    static int count = 0;
     char* tempVar = malloc(10); // Enough space for "t" + number
     if (!tempVar) return NULL;
-    count = allocateNextAvailableTempVar(tempVars);
-    sprintf(tempVar, "t%d", count++);
+    
+    int count = allocateNextAvailableTempVar(tempVars);
+    if (count == -1) {
+        fprintf(stderr, "Error: No available temp variables\n");
+        free(tempVar);
+        return NULL;
+    }
+    
+    sprintf(tempVar, "t%d", count);
     return tempVar;
 }
+
 
 char* createOperand(ASTNode* node) {
     // Depending on your AST structure, return the appropriate string
@@ -180,15 +207,15 @@ char* createOperand(ASTNode* node) {
         }
 
         case NodeType_Expr: {
-            return createTempVar();
+            TAC* exprTAC = generateTACForExpr(node);  // Recursively generate TAC
+            return exprTAC->result;  // Return the result temp variable from the TAC
         }
-
-        // Add cases for other operand types...
 
         default:
             return NULL;
     }
 }
+
 
 void printTAC(TAC* tac) {
     if (!tac) return;

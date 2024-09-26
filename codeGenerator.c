@@ -1,15 +1,18 @@
-// codeGenerator.c
-
 #include "codeGenerator.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h> // Include for isdigit
+
+int stackOffset = 0;  // Initialize this at the start of the program
 
 static FILE* outputFile;
 
 typedef struct {
-    char* name; // Name of the register, e.g., "$t0"
-    bool inUse; // Whether the register is currently in use
+    char* name;   // Name of the register, e.g., "$t0"
+    bool inUse;   // Whether the register is currently in use
+    bool spilled; // Whether the register has been spilled
 } MIPSRegister;
+
 
 // Array of temporary registers, used for register allocation
 // and tracking which registers are currently in use
@@ -31,50 +34,86 @@ void initCodeGenerator(const char* outputFilename) {
 }
 
 void generateMIPS(TAC* tacInstructions) {
-    /*
-    NOTE: This is a simple code generation function that generates MIPS assembly code
-    from the provided TAC instructions. It assumes that the TAC is already optimized
-
-    The generated code is written to the output file specified during initialization.
-    The register allocation strategy used here is a simple linear scan of the temporary
-    registers, without considering more advanced techniques such as liveness analysis.
-
-    You can modify this function to implement more advanced register allocation
-    and other optimizations as needed for your compiler.
-
-    Not all generated MIPS uses the allocated registers, so you may need to modify
-    the code to properly allocate registers for each operation.
-    
-    */
-  
     TAC* current = tacInstructions;
     fprintf(outputFile, ".text\n.globl main\nmain:\n");
 
-    int regIndex = allocateRegister(); // Allocate a register, e.g., $t0
-    if (regIndex == -1) {
-        // Handle register allocation failure
-        return;
-    }
-
-    printf("Generating MIPS code...\n");
     while (current != NULL) {
         printCurrentTAC(current);
-        if(strcmp(current->op, "=") == 0){
-            printf("Generating MIPS for Assignment operation\n");
-            fprintf(outputFile, "\tli $t0, %s\n\tsw $t0, %s\n", current->arg1, current->result);
+
+        if (strcmp(current->op, "=") == 0) {
+            int regIndex = allocateRegister();
+            if (regIndex == -1) {
+                fprintf(stderr, "Register allocation failed\n");
+                return;
+            }
+
+            // Check if arg1 is an immediate value
+            if (isImmediate(current->arg1)) {
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regIndex].name, current->arg1);  // Load immediate value
+            } else {
+                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regIndex].name, current->arg1);  // Load variable from memory
+            }
+
+            // Store into a variable (only if the result is a real variable, not a temporary one)
+            if (!isTemporaryVariable(current->result)) {
+                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regIndex].name, current->result);  // Store the result in memory
+            }
+
+            deallocateRegister(regIndex);
         }
-       else if (strcmp(current->op, "+") == 0) {
-            // Modify the command below, to properly allocate registers for the operands
-            printf("Generating MIPS code for addition operation\n");
-            fprintf(outputFile, "\tlw $t0, %s\n\tlw $t1, %s\n\tadd $t2, $t0, $t1\n\tsw $t2, %s\n", current->arg1, current->arg2, current->result);
+
+        else if (strcmp(current->op, "+") == 0) {
+            int reg1 = allocateRegister();
+            int reg2 = allocateRegister();
+            int regRes = allocateRegister();
+
+            // Load arg1 (either as an immediate or from memory)
+            if (isImmediate(current->arg1)) {
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[reg1].name, current->arg1);
+            } else {
+                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[reg1].name, current->arg1);
+            }
+
+            // Load arg2 (either as an immediate or from memory)
+            if (isImmediate(current->arg2)) {
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[reg2].name, current->arg2);
+            } else {
+                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[reg2].name, current->arg2);
+            }
+
+            // Perform the addition and store the result in regRes
+            fprintf(outputFile, "\tadd %s, %s, %s\n", tempRegisters[regRes].name, tempRegisters[reg1].name, tempRegisters[reg2].name);
+
+            // Store the result in memory only if it is not a temporary variable
+            if (!isTemporaryVariable(current->result)) {
+                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regRes].name, current->result);
+            }
+
+            deallocateRegister(reg1);
+            deallocateRegister(reg2);
+            deallocateRegister(regRes);
         }
-        // Add more operations here (subtraction, multiplication, etc.)
+
+        // Handle write operation (write x)
+        else if (strcmp(current->op, "write") == 0) {
+            fprintf(outputFile, "\tli $v0, 1\n");       // Load syscall code for print integer
+            if (!isImmediate(current->result)) {
+                fprintf(outputFile, "\tlw $a0, %s\n", current->result);  // Load value from memory
+            } else {
+                fprintf(outputFile, "\tli $a0, %s\n", current->result);  // Load immediate value
+            }
+            fprintf(outputFile, "\tsyscall\n");
+        }
 
         current = current->next;
     }
 
-    // Exit program
     fprintf(outputFile, "\tli $v0, 10\n\tsyscall\n");
+}
+
+bool isTemporaryVariable(char* varName) {
+    // Assuming temporary variables are named like t0, t1, t2, etc.
+    return (varName[0] == 't' && isdigit(varName[1]));
 }
 
 void finalizeCodeGenerator(const char* outputFilename) {
@@ -85,32 +124,21 @@ void finalizeCodeGenerator(const char* outputFilename) {
     }
 }
 
+/*
+ * Helper function: Check if an operand is an immediate value or a variable
+ */
+bool isImmediate(char* operand) {
+    for (int i = 0; i < strlen(operand); i++) {
+        if (!isdigit(operand[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /*
-
-Implementing register allocation in your MIPS code generation phase is a crucial step 
-for optimizing the use of CPU resources. The goal is to map your temporary variables (from TAC) 
-to a limited set of MIPS registers, ideally minimizing memory access by keeping 
-frequently used values in registers.
-
-MIPS architecture provides a set of general-purpose registers, 
-$t0 to $t9 for temporary values, and $s0 to $s7 for saved values. 
-For simplicity, let's focus on using the temporary registers.
-
-Strategy for Register Allocation:
---------------------------------
-
-A simple strategy for register allocation could involve:
-
-Register Pool: Keep track of which registers are currently available.
-Allocation and Deallocation: Allocate registers when needed for operations and 
-                             deallocate them when they are no longer needed.
-Spilling: If all registers are in use and another one is needed,
-          "spill" a register's value to memory and reuse the register.
-
-*/
-
-// Allocate a register
+ * Register allocation logic
+ */
 int allocateRegister() {
     for (int i = 0; i < NUM_TEMP_REGISTERS; i++) {
         if (!tempRegisters[i].inUse) {
@@ -118,11 +146,40 @@ int allocateRegister() {
             return i; // Return the register index
         }
     }
-    // No available register, implement spilling if necessary
-    return -1; // Indicate failure
+    // If no registers are available, pick one to spill
+    int regToSpill = pickRegisterToSpill();
+    spillRegister(regToSpill); // Spill the chosen register
+    tempRegisters[regToSpill].inUse = true; // Mark it as in use again
+    return regToSpill;
 }
 
-// Deallocate a register
+void spillRegister(int regIndex) {
+    fprintf(outputFile, "\tsw %s, %d($sp)\n", tempRegisters[regIndex].name, stackOffset);
+    stackOffset -= 4;  // Adjust the stack pointer
+    tempRegisters[regIndex].inUse = false;
+    tempRegisters[regIndex].spilled = true;  // Track that this register was spilled
+}
+
+void restoreRegister(int regIndex) {
+    if (tempRegisters[regIndex].spilled) {  // Only restore if the register was spilled
+        fprintf(outputFile, "\tlw %s, %d($sp)\n", tempRegisters[regIndex].name, stackOffset + 4);
+        stackOffset += 4;  // Move stack pointer back up
+        tempRegisters[regIndex].spilled = false;  // Mark as restored
+    }
+}
+
+int pickRegisterToSpill() {
+    // Iterate through the temporary registers to find one to spill
+    for (int i = 0; i < NUM_TEMP_REGISTERS; i++) {
+        if (tempRegisters[i].inUse) {
+            return i; // Return the first in-use register found
+        }
+    }
+    // If no registers are in use, this shouldn't happen, but handle as an error
+    fprintf(stderr, "Error: No register available for spilling.\n");
+    exit(EXIT_FAILURE); // Or handle this more gracefully if needed
+}
+
 void deallocateRegister(int regIndex) {
     if (regIndex >= 0 && regIndex < NUM_TEMP_REGISTERS) {
         tempRegisters[regIndex].inUse = false;
@@ -146,7 +203,7 @@ void printCurrentTAC(TAC* tac) {
             if(current->arg2 != NULL)
                 printf("%s ", current->arg2);
             printf("\n");
-    }
+        }
         current = current->next;
     }   
 }

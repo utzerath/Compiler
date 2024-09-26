@@ -1,13 +1,15 @@
-// codeGenerator.h
-
 #ifndef CODE_GENERATOR_H
 #define CODE_GENERATOR_H
 
 #include "AST.h" // Include your AST definition
 #include "semantic.h" // Include your TAC definition
 #include <stdbool.h>
+#include <ctype.h> // Include ctype.h for isdigit
 
 #define NUM_TEMP_REGISTERS 10
+
+// Pick a register to spill (e.g., use an LRU or first available strategy)
+int pickRegisterToSpill();
 
 // Initializes code generation, setting up any necessary structures
 void initCodeGenerator(const char* outputFilename);
@@ -24,7 +26,20 @@ int allocateRegister();
 // Deallocate a register
 void deallocateRegister(int regIndex);
 
+// Spill a register to memory (stack)
+void spillRegister(int regIndex);
+
+// Restore a spilled register from memory (stack)
+void restoreRegister(int regIndex);
+
+// Check if the operand is an immediate value
+bool isImmediate(char* operand);  // <-- Add declaration for isImmediate
+
 // Print the current TAC instruction
 void printCurrentTAC(TAC* tac);
+
+// Checks if a variable is a temporary variable (e.g., t0, t1, etc.)
+bool isTemporaryVariable(char* varName);
+
 
 #endif // CODE_GENERATOR_H

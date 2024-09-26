@@ -1,0 +1,433 @@
+graph: {
+	display_edge_labels:	yes
+	priority_phase:	yes
+	port_sharing:	no
+	crossing_weight:	median
+	splines:	yes
+	node: {
+		title:	"0"
+		label:	"state  0\n $accept -> . Program $end"
+	}
+	edge: {
+		sourcename:	"0"
+		targetname:	"1"
+		label:	"TYPE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"0"
+		targetname:	"2"
+		label:	"Program"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"0"
+		targetname:	"3"
+		label:	"VarDeclList"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"0"
+		targetname:	"4"
+		label:	"VarDecl"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"1"
+		label:	"state  1\n VarDecl -> TYPE . ID SEMICOLON\n VarDecl -> TYPE . ID"
+	}
+	edge: {
+		sourcename:	"1"
+		targetname:	"5"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"2"
+		label:	"state  2\n $accept -> Program . $end"
+	}
+	edge: {
+		sourcename:	"2"
+		targetname:	"6"
+		label:	"$end"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"3"
+		label:	"state  3\n Program -> VarDeclList . StmtList"
+	}
+	edge: {
+		sourcename:	"3"
+		targetname:	"7"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"3"
+		targetname:	"8"
+		label:	"WRITE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"3"
+		targetname:	"9"
+		label:	"OPEN_BRACE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"3"
+		targetname:	"10"
+		label:	"StmtList"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"3"
+		targetname:	"11"
+		label:	"Stmt"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"4"
+		label:	"state  4\n VarDeclList -> VarDecl . VarDeclList"
+	}
+	backedge: {
+		sourcename:	"4"
+		targetname:	"1"
+		label:	"TYPE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"4"
+		targetname:	"12"
+		label:	"VarDeclList"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"4"
+		targetname:	"4"
+		label:	"VarDecl"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"5"
+		label:	"state  5\n VarDecl -> TYPE ID . SEMICOLON\n VarDecl -> TYPE ID ."
+	}
+	edge: {
+		sourcename:	"5"
+		targetname:	"13"
+		label:	"SEMICOLON"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"6"
+		label:	"state  6\n $accept -> Program $end ."
+	}
+	node: {
+		title:	"7"
+		label:	"state  7\n Stmt -> ID . EQ Expr SEMICOLON"
+	}
+	edge: {
+		sourcename:	"7"
+		targetname:	"14"
+		label:	"EQ"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"8"
+		label:	"state  8\n Stmt -> WRITE . ID SEMICOLON"
+	}
+	edge: {
+		sourcename:	"8"
+		targetname:	"15"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"9"
+		label:	"state  9\n Stmt -> OPEN_BRACE . StmtList CLOSE_BRACE"
+	}
+	backedge: {
+		sourcename:	"9"
+		targetname:	"7"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"9"
+		targetname:	"8"
+		label:	"WRITE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"9"
+		targetname:	"9"
+		label:	"OPEN_BRACE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"9"
+		targetname:	"16"
+		label:	"StmtList"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"9"
+		targetname:	"11"
+		label:	"Stmt"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"10"
+		label:	"state 10\n Program -> VarDeclList StmtList ."
+	}
+	node: {
+		title:	"11"
+		label:	"state 11\n StmtList -> Stmt . StmtList"
+	}
+	backedge: {
+		sourcename:	"11"
+		targetname:	"7"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"11"
+		targetname:	"8"
+		label:	"WRITE"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"11"
+		targetname:	"9"
+		label:	"OPEN_BRACE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"11"
+		targetname:	"17"
+		label:	"StmtList"
+		color:	green
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"11"
+		targetname:	"11"
+		label:	"Stmt"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"12"
+		label:	"state 12\n VarDeclList -> VarDecl VarDeclList ."
+	}
+	node: {
+		title:	"13"
+		label:	"state 13\n VarDecl -> TYPE ID SEMICOLON ."
+	}
+	node: {
+		title:	"14"
+		label:	"state 14\n Stmt -> ID EQ . Expr SEMICOLON"
+	}
+	edge: {
+		sourcename:	"14"
+		targetname:	"18"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"14"
+		targetname:	"19"
+		label:	"NUMBER"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"14"
+		targetname:	"20"
+		label:	"Expr"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"15"
+		label:	"state 15\n Stmt -> WRITE ID . SEMICOLON"
+	}
+	edge: {
+		sourcename:	"15"
+		targetname:	"21"
+		label:	"SEMICOLON"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"16"
+		label:	"state 16\n Stmt -> OPEN_BRACE StmtList . CLOSE_BRACE"
+	}
+	edge: {
+		sourcename:	"16"
+		targetname:	"22"
+		label:	"CLOSE_BRACE"
+		color:	blue
+		textcolor:	black
+	}
+	node: {
+		title:	"17"
+		label:	"state 17\n StmtList -> Stmt StmtList ."
+	}
+	node: {
+		title:	"18"
+		label:	"state 18\n Expr -> ID ."
+	}
+	node: {
+		title:	"19"
+		label:	"state 19\n Expr -> NUMBER ."
+	}
+	node: {
+		title:	"20"
+		label:	"state 20\n Stmt -> ID EQ Expr . SEMICOLON\n Expr -> Expr . BinOp Expr"
+	}
+	edge: {
+		sourcename:	"20"
+		targetname:	"23"
+		label:	"SEMICOLON"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"20"
+		targetname:	"24"
+		label:	"PLUS"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"20"
+		targetname:	"25"
+		label:	"MULTIPLY"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"20"
+		targetname:	"26"
+		label:	"DIVIDE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"20"
+		targetname:	"27"
+		label:	"BinOp"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"21"
+		label:	"state 21\n Stmt -> WRITE ID SEMICOLON ."
+	}
+	node: {
+		title:	"22"
+		label:	"state 22\n Stmt -> OPEN_BRACE StmtList CLOSE_BRACE ."
+	}
+	node: {
+		title:	"23"
+		label:	"state 23\n Stmt -> ID EQ Expr SEMICOLON ."
+	}
+	node: {
+		title:	"24"
+		label:	"state 24\n BinOp -> PLUS ."
+	}
+	node: {
+		title:	"25"
+		label:	"state 25\n BinOp -> MULTIPLY ."
+	}
+	node: {
+		title:	"26"
+		label:	"state 26\n BinOp -> DIVIDE ."
+	}
+	node: {
+		title:	"27"
+		label:	"state 27\n Expr -> Expr BinOp . Expr"
+	}
+	backedge: {
+		sourcename:	"27"
+		targetname:	"18"
+		label:	"ID"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"27"
+		targetname:	"19"
+		label:	"NUMBER"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"27"
+		targetname:	"28"
+		label:	"Expr"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"28"
+		label:	"state 28\n Expr -> Expr . BinOp Expr\n Expr -> Expr BinOp Expr ."
+	}
+	backedge: {
+		sourcename:	"28"
+		targetname:	"24"
+		label:	"PLUS"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"28"
+		targetname:	"25"
+		label:	"MULTIPLY"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"28"
+		targetname:	"26"
+		label:	"DIVIDE"
+		color:	blue
+		textcolor:	black
+	}
+	backedge: {
+		sourcename:	"28"
+		targetname:	"27"
+		label:	"BinOp"
+		color:	green
+		textcolor:	black
+	}
+
+
+}

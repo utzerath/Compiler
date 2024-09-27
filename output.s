@@ -1,4 +1,9 @@
 .data
+y: .word 0
+c: .word 0
+b: .word 0
+a: .word 0
+x: .word 0
 .text
 .globl main
 main:

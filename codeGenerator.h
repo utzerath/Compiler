@@ -1,10 +1,10 @@
 #ifndef CODE_GENERATOR_H
 #define CODE_GENERATOR_H
 
-#include "AST.h" // Include your AST definition
+#include "AST.h"     // Include your AST definition
 #include "semantic.h" // Include your TAC definition
 #include <stdbool.h>
-#include <ctype.h> // Include ctype.h for isdigit
+#include <ctype.h>    // Include ctype.h for isdigit
 
 #define NUM_TEMP_REGISTERS 10
 
@@ -33,7 +33,7 @@ void spillRegister(int regIndex);
 void restoreRegister(int regIndex);
 
 // Check if the operand is an immediate value
-bool isImmediate(char* operand);  // <-- Add declaration for isImmediate
+bool isImmediate(char* operand);
 
 // Print the current TAC instruction
 void printCurrentTAC(TAC* tac);
@@ -41,5 +41,16 @@ void printCurrentTAC(TAC* tac);
 // Checks if a variable is a temporary variable (e.g., t0, t1, etc.)
 bool isTemporaryVariable(char* varName);
 
+// Declare variables dynamically based on TAC instructions
+void declareVariablesFromTAC(TAC* tacInstructions);
+
+// Add a variable to the list of declared variables
+void declareVariable(char* varName);
+
+// Check if a variable has already been declared
+bool isVariableDeclared(char* varName);
+
+// Generate the .data section for declared variables
+void generateDataSection();
 
 #endif // CODE_GENERATOR_H

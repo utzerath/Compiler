@@ -150,13 +150,27 @@ graph: {
 	}
 	node: {
 		title:	"8"
-		label:	"state  8\n Stmt -> WRITE . ID SEMICOLON"
+		label:	"state  8\n Stmt -> WRITE . Expr SEMICOLON"
 	}
 	edge: {
 		sourcename:	"8"
 		targetname:	"15"
 		label:	"ID"
 		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"8"
+		targetname:	"16"
+		label:	"NUMBER"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"8"
+		targetname:	"17"
+		label:	"Expr"
+		color:	green
 		textcolor:	black
 	}
 	node: {
@@ -186,7 +200,7 @@ graph: {
 	}
 	edge: {
 		sourcename:	"9"
-		targetname:	"16"
+		targetname:	"18"
 		label:	"StmtList"
 		color:	green
 		textcolor:	black
@@ -229,7 +243,7 @@ graph: {
 	}
 	edge: {
 		sourcename:	"11"
-		targetname:	"17"
+		targetname:	"19"
 		label:	"StmtList"
 		color:	green
 		textcolor:	black
@@ -255,14 +269,14 @@ graph: {
 	}
 	edge: {
 		sourcename:	"14"
-		targetname:	"18"
+		targetname:	"15"
 		label:	"ID"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
 		sourcename:	"14"
-		targetname:	"19"
+		targetname:	"16"
 		label:	"NUMBER"
 		color:	blue
 		textcolor:	black
@@ -276,37 +290,65 @@ graph: {
 	}
 	node: {
 		title:	"15"
-		label:	"state 15\n Stmt -> WRITE ID . SEMICOLON"
+		label:	"state 15\n Expr -> ID ."
+	}
+	node: {
+		title:	"16"
+		label:	"state 16\n Expr -> NUMBER ."
+	}
+	node: {
+		title:	"17"
+		label:	"state 17\n Stmt -> WRITE Expr . SEMICOLON\n Expr -> Expr . BinOp Expr"
 	}
 	edge: {
-		sourcename:	"15"
+		sourcename:	"17"
 		targetname:	"21"
 		label:	"SEMICOLON"
 		color:	blue
 		textcolor:	black
 	}
-	node: {
-		title:	"16"
-		label:	"state 16\n Stmt -> OPEN_BRACE StmtList . CLOSE_BRACE"
+	edge: {
+		sourcename:	"17"
+		targetname:	"22"
+		label:	"PLUS"
+		color:	blue
+		textcolor:	black
 	}
 	edge: {
-		sourcename:	"16"
-		targetname:	"22"
+		sourcename:	"17"
+		targetname:	"23"
+		label:	"MULTIPLY"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"17"
+		targetname:	"24"
+		label:	"DIVIDE"
+		color:	blue
+		textcolor:	black
+	}
+	edge: {
+		sourcename:	"17"
+		targetname:	"25"
+		label:	"BinOp"
+		color:	green
+		textcolor:	black
+	}
+	node: {
+		title:	"18"
+		label:	"state 18\n Stmt -> OPEN_BRACE StmtList . CLOSE_BRACE"
+	}
+	edge: {
+		sourcename:	"18"
+		targetname:	"26"
 		label:	"CLOSE_BRACE"
 		color:	blue
 		textcolor:	black
 	}
 	node: {
-		title:	"17"
-		label:	"state 17\n StmtList -> Stmt StmtList ."
-	}
-	node: {
-		title:	"18"
-		label:	"state 18\n Expr -> ID ."
-	}
-	node: {
 		title:	"19"
-		label:	"state 19\n Expr -> NUMBER ."
+		label:	"state 19\n StmtList -> Stmt StmtList ."
 	}
 	node: {
 		title:	"20"
@@ -314,87 +356,87 @@ graph: {
 	}
 	edge: {
 		sourcename:	"20"
-		targetname:	"23"
+		targetname:	"27"
 		label:	"SEMICOLON"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
 		sourcename:	"20"
-		targetname:	"24"
+		targetname:	"22"
 		label:	"PLUS"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
 		sourcename:	"20"
-		targetname:	"25"
+		targetname:	"23"
 		label:	"MULTIPLY"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
 		sourcename:	"20"
-		targetname:	"26"
+		targetname:	"24"
 		label:	"DIVIDE"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
 		sourcename:	"20"
-		targetname:	"27"
+		targetname:	"25"
 		label:	"BinOp"
 		color:	green
 		textcolor:	black
 	}
 	node: {
 		title:	"21"
-		label:	"state 21\n Stmt -> WRITE ID SEMICOLON ."
+		label:	"state 21\n Stmt -> WRITE Expr SEMICOLON ."
 	}
 	node: {
 		title:	"22"
-		label:	"state 22\n Stmt -> OPEN_BRACE StmtList CLOSE_BRACE ."
+		label:	"state 22\n BinOp -> PLUS ."
 	}
 	node: {
 		title:	"23"
-		label:	"state 23\n Stmt -> ID EQ Expr SEMICOLON ."
+		label:	"state 23\n BinOp -> MULTIPLY ."
 	}
 	node: {
 		title:	"24"
-		label:	"state 24\n BinOp -> PLUS ."
+		label:	"state 24\n BinOp -> DIVIDE ."
 	}
 	node: {
 		title:	"25"
-		label:	"state 25\n BinOp -> MULTIPLY ."
-	}
-	node: {
-		title:	"26"
-		label:	"state 26\n BinOp -> DIVIDE ."
-	}
-	node: {
-		title:	"27"
-		label:	"state 27\n Expr -> Expr BinOp . Expr"
+		label:	"state 25\n Expr -> Expr BinOp . Expr"
 	}
 	backedge: {
-		sourcename:	"27"
-		targetname:	"18"
+		sourcename:	"25"
+		targetname:	"15"
 		label:	"ID"
 		color:	blue
 		textcolor:	black
 	}
 	backedge: {
-		sourcename:	"27"
-		targetname:	"19"
+		sourcename:	"25"
+		targetname:	"16"
 		label:	"NUMBER"
 		color:	blue
 		textcolor:	black
 	}
 	edge: {
-		sourcename:	"27"
+		sourcename:	"25"
 		targetname:	"28"
 		label:	"Expr"
 		color:	green
 		textcolor:	black
+	}
+	node: {
+		title:	"26"
+		label:	"state 26\n Stmt -> OPEN_BRACE StmtList CLOSE_BRACE ."
+	}
+	node: {
+		title:	"27"
+		label:	"state 27\n Stmt -> ID EQ Expr SEMICOLON ."
 	}
 	node: {
 		title:	"28"
@@ -402,28 +444,28 @@ graph: {
 	}
 	backedge: {
 		sourcename:	"28"
-		targetname:	"24"
+		targetname:	"22"
 		label:	"PLUS"
 		color:	blue
 		textcolor:	black
 	}
 	backedge: {
 		sourcename:	"28"
-		targetname:	"25"
+		targetname:	"23"
 		label:	"MULTIPLY"
 		color:	blue
 		textcolor:	black
 	}
 	backedge: {
 		sourcename:	"28"
-		targetname:	"26"
+		targetname:	"24"
 		label:	"DIVIDE"
 		color:	blue
 		textcolor:	black
 	}
 	backedge: {
 		sourcename:	"28"
-		targetname:	"27"
+		targetname:	"25"
 		label:	"BinOp"
 		color:	green
 		textcolor:	black

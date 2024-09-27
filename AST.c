@@ -20,58 +20,56 @@ void traverseAST(ASTNode* node, int level) {
 
     switch (node->type) {
         case NodeType_Program:
-            printIndent(level);
             printf("Program\n");
             traverseAST(node->program.varDeclList, level + 1);
             traverseAST(node->program.stmtList, level + 1);
             break;
         case NodeType_VarDeclList:
-            printIndent(level);
             printf("VarDeclList\n");
-            traverseAST(node->varDeclList.varDecl, level + 1);
-            traverseAST(node->varDeclList.varDeclList, level + 1);
+            traverseAST(node->varDeclList.varDecl, level + 1);  // Traverse current VarDecl
+            if (node->varDeclList.varDeclList != NULL) {
+                traverseAST(node->varDeclList.varDeclList, level + 1);  // Traverse next VarDeclList
+            }
             break;
         case NodeType_VarDecl:
-            printIndent(level);
             printf("VarDecl: %s %s\n", node->varDecl.varType, node->varDecl.varName);
             break;
         case NodeType_SimpleExpr:
-            printIndent(level);
             printf("%d\n", node->simpleExpr.number);
             break;
         case NodeType_SimpleID:
-            printIndent(level);
             printf("%s\n", node->simpleID.name);
             break;
         case NodeType_Expr:
-            printIndent(level);
             printf("Expr: %c\n", node->expr.operator);
             traverseAST(node->expr.left, level + 1);
             traverseAST(node->expr.right, level + 1);
             break;
         case NodeType_StmtList:
-            printIndent(level);
             printf("StmtList\n");
             traverseAST(node->stmtList.stmt, level + 1);
             traverseAST(node->stmtList.stmtList, level + 1);
             break;
         case NodeType_AssignStmt:
-            printIndent(level);
-            printf("Stmt: %s = ", node->assignStmt.varName);
+            printf("Stmt: %s = \n", node->assignStmt.varName);
             traverseAST(node->assignStmt.expr, level + 1);
             break;
         case NodeType_BinOp:
-            printIndent(level);
             printf("BinOp: %c\n", node->binOp.operator);
             traverseAST(node->binOp.left, level + 1);
             traverseAST(node->binOp.right, level + 1);
             break;
+        case NodeType_WriteStmt:
+            printf("WriteStmt: write %s\n", node->writeStmt.expr->simpleID.name);  // Assuming you're writing a variable
+            //traverseAST(node->writeStmt.expr, level + 1);  // Traverse the expression being written this isnt working but will need if we ever add write (write x+ y)
+            break;
+
         default:
-            printIndent(level);
-            printf("Unknown node type\n");
+            printf("Unknown node type: %d\n", node->type);  // Add more specific debugging
             break;
     }
 }
+
 
 void freeAST(ASTNode* node) {
     if (!node) return;
@@ -112,10 +110,12 @@ void freeAST(ASTNode* node) {
             freeAST(node->binOp.left);
             freeAST(node->binOp.right);
             break;
+        case NodeType_WriteStmt:  // <-- Add case for freeing write statements
+            free(node->writeStmt.varName);
+            break;
         default:
             break;
     }
-
     free(node);
 }
 
@@ -164,6 +164,9 @@ ASTNode* createNode(NodeType type) {
             newNode->binOp.operator = '\0';  // Placeholder value
             newNode->binOp.left = NULL;
             newNode->binOp.right = NULL;
+            break;
+        case NodeType_WriteStmt:
+            newNode->writeStmt.varName = NULL;
             break;
         default:
             break;

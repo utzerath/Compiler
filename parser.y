@@ -61,17 +61,17 @@ Program: VarDeclList StmtList    { printf("The PARSER has started\n");
 
 ;
 
-VarDeclList:  {/*empty, i.e. it is possible not to declare a variable*/} 
-	| VarDecl VarDeclList {  printf("PARSER: Recognized variable declaration list\n"); 
-
-							// Create AST node for VarDeclList
-							$$ = malloc(sizeof(ASTNode));
-							$$->type = NodeType_VarDeclList;
-							$$->varDeclList.varDecl = $1;
-							$$->varDeclList.varDeclList = $2;
-							// Set other fields as necessary
-							}
+VarDeclList: /* empty */ {
+    $$ = NULL;  // Properly terminate the list with NULL
+}
+| VarDecl VarDeclList {
+    $$ = malloc(sizeof(ASTNode));  // Allocate memory for VarDeclList node
+    $$->type = NodeType_VarDeclList;  // Set node type to VarDeclList
+    $$->varDeclList.varDecl = $1;  // Store the current VarDecl
+    $$->varDeclList.varDeclList = $2;  // Link to the next VarDeclList (or NULL if end)
+}
 ;
+
 
 VarDecl: TYPE ID SEMICOLON { printf("PARSER: Recognized variable declaration: %s\n", $2);
 
@@ -117,24 +117,28 @@ StmtList:  {/*empty, i.e. it is possible not to have any statement*/}
 					}
 ;
 
-Stmt: ID EQ Expr SEMICOLON { /* code TBD */ 
+Stmt: ID EQ Expr SEMICOLON {
        printf("PARSER: Recognized assignment statement\n");
        $$ = malloc(sizeof(ASTNode));
        $$->type = NodeType_AssignStmt;
-       $$->assignStmt.varName = strdup($1);
-       $$->assignStmt.operator = $2;
-       $$->assignStmt.expr = $3;
-       /* Set other fields as necessary */
+       $$->assignStmt.varName = strdup($1);  // Store the variable name
+       $$->assignStmt.operator = $2;         // Store the assignment operator (if needed)
+       $$->assignStmt.expr = $3;             // Link the expression subtree
      }
-   | WRITE ID SEMICOLON { printf("PARSER: Recognized write statement\n"); }
-   | OPEN_BRACE StmtList CLOSE_BRACE { /* code block */
+   | WRITE Expr SEMICOLON {  // Handle writing an expression (instead of just an ID)
+       printf("PARSER: Recognized write statement\n");
+       $$ = malloc(sizeof(ASTNode));
+       $$->type = NodeType_WriteStmt;
+       $$->writeStmt.expr = $2;              // Store the expression being written
+     }
+   | OPEN_BRACE StmtList CLOSE_BRACE {  // Handle block of statements
        printf("PARSER: Recognized a block statement\n");
        $$ = malloc(sizeof(ASTNode));
        $$->type = NodeType_BlockStmt;
-       $$->blockStmt.stmtList = $2;
-       /* Set other fields as necessary */
+       $$->blockStmt.stmtList = $2;          // Link to the statement list
      }
 ;
+
 
 
 Expr: Expr BinOp Expr { printf("PARSER: Recognized expression\n");

@@ -272,3 +272,7 @@ void printCurrentOptimizedTAC(TAC* current) {
         printf("%s ", current->arg2);
     printf("\n");
 }
+
+
+
+//porpogate then fold in a loop till you can't no more

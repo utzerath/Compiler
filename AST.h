@@ -18,7 +18,8 @@ typedef enum {
     NodeType_StmtList,
     NodeType_AssignStmt,
     NodeType_BinOp, 
-    NodeType_BlockStmt    // Added to represent a block of statements
+    NodeType_BlockStmt,    // Added to represent a block of statements
+    NodeType_WriteStmt
 } NodeType;
 
 // Structure for AST nodes
@@ -73,7 +74,10 @@ typedef struct ASTNode {
             struct ASTNode* left;
             struct ASTNode* right;
         } binOp;
-
+        struct {
+            char* varName;  // <-- Add this field for write statement
+            struct ASTNode* expr;      // Expression to write, if applicable
+        } writeStmt; 
         struct {
             struct ASTNode* stmtList; // Pointer to the list of statements inside the block
         } blockStmt;  // Added blockStmt for handling blocks of code

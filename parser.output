@@ -17,7 +17,7 @@ Grammar
     7         | Stmt StmtList
 
     8 Stmt: ID EQ Expr SEMICOLON
-    9     | WRITE ID SEMICOLON
+    9     | WRITE Expr SEMICOLON
    10     | OPEN_BRACE StmtList CLOSE_BRACE
 
    11 Expr: Expr BinOp Expr
@@ -34,7 +34,7 @@ Terminals, with rules where they appear
 $end (0) 0
 error (256)
 TYPE (258) 4 5
-ID (259) 4 5 8 9 12
+ID (259) 4 5 8 12
 SEMICOLON (260) 4 8 9
 EQ (261) 8
 PLUS (262) 14
@@ -61,7 +61,7 @@ StmtList (18)
 Stmt (19)
     on left: 8 9 10, on right: 7
 Expr (20)
-    on left: 11 12 13, on right: 8 11
+    on left: 11 12 13, on right: 8 9 11
 BinOp (21)
     on left: 14 15 16, on right: 11
 
@@ -146,9 +146,12 @@ state 7
 
 state 8
 
-    9 Stmt: WRITE . ID SEMICOLON
+    9 Stmt: WRITE . Expr SEMICOLON
 
-    ID  shift, and go to state 15
+    ID      shift, and go to state 15
+    NUMBER  shift, and go to state 16
+
+    Expr  go to state 17
 
 
 state 9
@@ -161,7 +164,7 @@ state 9
 
     $default  reduce using rule 6 (StmtList)
 
-    StmtList  go to state 16
+    StmtList  go to state 18
     Stmt      go to state 11
 
 
@@ -182,7 +185,7 @@ state 11
 
     $default  reduce using rule 6 (StmtList)
 
-    StmtList  go to state 17
+    StmtList  go to state 19
     Stmt      go to state 11
 
 
@@ -204,45 +207,51 @@ state 14
 
     8 Stmt: ID EQ . Expr SEMICOLON
 
-    ID      shift, and go to state 18
-    NUMBER  shift, and go to state 19
+    ID      shift, and go to state 15
+    NUMBER  shift, and go to state 16
 
     Expr  go to state 20
 
 
 state 15
 
-    9 Stmt: WRITE ID . SEMICOLON
-
-    SEMICOLON  shift, and go to state 21
-
-
-state 16
-
-   10 Stmt: OPEN_BRACE StmtList . CLOSE_BRACE
-
-    CLOSE_BRACE  shift, and go to state 22
-
-
-state 17
-
-    7 StmtList: Stmt StmtList .
-
-    $default  reduce using rule 7 (StmtList)
-
-
-state 18
-
    12 Expr: ID .
 
     $default  reduce using rule 12 (Expr)
 
 
-state 19
+state 16
 
    13 Expr: NUMBER .
 
     $default  reduce using rule 13 (Expr)
+
+
+state 17
+
+    9 Stmt: WRITE Expr . SEMICOLON
+   11 Expr: Expr . BinOp Expr
+
+    SEMICOLON  shift, and go to state 21
+    PLUS       shift, and go to state 22
+    MULTIPLY   shift, and go to state 23
+    DIVIDE     shift, and go to state 24
+
+    BinOp  go to state 25
+
+
+state 18
+
+   10 Stmt: OPEN_BRACE StmtList . CLOSE_BRACE
+
+    CLOSE_BRACE  shift, and go to state 26
+
+
+state 19
+
+    7 StmtList: Stmt StmtList .
+
+    $default  reduce using rule 7 (StmtList)
 
 
 state 20
@@ -250,64 +259,64 @@ state 20
     8 Stmt: ID EQ Expr . SEMICOLON
    11 Expr: Expr . BinOp Expr
 
-    SEMICOLON  shift, and go to state 23
-    PLUS       shift, and go to state 24
-    MULTIPLY   shift, and go to state 25
-    DIVIDE     shift, and go to state 26
+    SEMICOLON  shift, and go to state 27
+    PLUS       shift, and go to state 22
+    MULTIPLY   shift, and go to state 23
+    DIVIDE     shift, and go to state 24
 
-    BinOp  go to state 27
+    BinOp  go to state 25
 
 
 state 21
 
-    9 Stmt: WRITE ID SEMICOLON .
+    9 Stmt: WRITE Expr SEMICOLON .
 
     $default  reduce using rule 9 (Stmt)
 
 
 state 22
 
-   10 Stmt: OPEN_BRACE StmtList CLOSE_BRACE .
-
-    $default  reduce using rule 10 (Stmt)
-
-
-state 23
-
-    8 Stmt: ID EQ Expr SEMICOLON .
-
-    $default  reduce using rule 8 (Stmt)
-
-
-state 24
-
    14 BinOp: PLUS .
 
     $default  reduce using rule 14 (BinOp)
 
 
-state 25
+state 23
 
    15 BinOp: MULTIPLY .
 
     $default  reduce using rule 15 (BinOp)
 
 
-state 26
+state 24
 
    16 BinOp: DIVIDE .
 
     $default  reduce using rule 16 (BinOp)
 
 
-state 27
+state 25
 
    11 Expr: Expr BinOp . Expr
 
-    ID      shift, and go to state 18
-    NUMBER  shift, and go to state 19
+    ID      shift, and go to state 15
+    NUMBER  shift, and go to state 16
 
     Expr  go to state 28
+
+
+state 26
+
+   10 Stmt: OPEN_BRACE StmtList CLOSE_BRACE .
+
+    $default  reduce using rule 10 (Stmt)
+
+
+state 27
+
+    8 Stmt: ID EQ Expr SEMICOLON .
+
+    $default  reduce using rule 8 (Stmt)
 
 
 state 28
@@ -315,13 +324,13 @@ state 28
    11 Expr: Expr . BinOp Expr
    11     | Expr BinOp Expr .
 
-    PLUS      shift, and go to state 24
-    MULTIPLY  shift, and go to state 25
-    DIVIDE    shift, and go to state 26
+    PLUS      shift, and go to state 22
+    MULTIPLY  shift, and go to state 23
+    DIVIDE    shift, and go to state 24
 
     PLUS      [reduce using rule 11 (Expr)]
     MULTIPLY  [reduce using rule 11 (Expr)]
     DIVIDE    [reduce using rule 11 (Expr)]
     $default  reduce using rule 11 (Expr)
 
-    BinOp  go to state 27
+    BinOp  go to state 25

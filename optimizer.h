@@ -18,18 +18,37 @@ Basic Optimizations:
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
-#include "semantic.h"
+#include "semantic.h"  // This should define the TAC structure
 #include <stdbool.h>
 #include <ctype.h>
 
+// Optimization function to be called to start optimizing the TAC list
 void optimizeTAC(TAC** head);
+
+// Function to check if a given string represents a constant (e.g., a number)
 bool isConstant(const char* str);
-bool isVariable(const char* str);
-void constantFolding(TAC** head);
-void constantPropagation(TAC** head);
+
+// Declare the function
+bool isTempVariable(char* varName);
+
+// Perform constant folding optimization (evaluating constant expressions at compile time)
+bool constantFolding(TAC** head);
+
+// Perform constant propagation optimization (replacing variables with constant values)
+bool constantPropagation(TAC** head);
+
+// Perform copy propagation (replace variables with copies of another variable's value)
 void copyPropagation(TAC** head);
+
+// Perform dead code elimination (remove instructions whose results are not used)
 void deadCodeElimination(TAC** head);
+
+// Utility function to print the optimized TAC to a file
 void printOptimizedTAC(const char* filename, TAC* head);
+
+// Utility function to print the current TAC instruction to the console
 void printCurrentOptimizedTAC(TAC* current);
+// In optimizer.h
+void freeTACList(TAC* head);
 
 #endif // OPTIMIZER_H

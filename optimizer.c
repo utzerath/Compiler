@@ -1,41 +1,165 @@
 #include "optimizer.h"
 #include <stdbool.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-void optimizeTAC(TAC** head) {
-    constantFolding(head);
-    /*
-    constantPropagation(head);
-    copyPropagation(head);
-    deadCodeElimination(head);
-    */
+void safeStrReplace(char** target, const char* source) {
+    if (source != NULL) {
+        char* newStr = strdup(source);
+        if (newStr == NULL) {
+            perror("Failed to allocate memory for string duplication");
+            exit(EXIT_FAILURE);
+        }
+        *target = newStr;  // Assign the new string
+    } else {
+        *target = NULL;  // Set target to NULL if source is NULL
+    }
 }
 
-/**
- * Check if a string represents an integer constant.
- * 
- * @param str The string to check.
- * @return true if the string is an integer constant, false otherwise.
- * 
- * 
- * Functionality:
-The function first checks if the input is 'NULL' or an empty string, 
-returning 'false' in these cases as they don't represent a valid constant.
+bool constantFolding(TAC** head) {
+    TAC* current = *head;
+    bool changed = false;
 
-If your language supports negative numbers as constants, the function optionally checks 
-for a leading - character, skipping it for the subsequent numeric check.
+    while (current != NULL) {
+        // Debug: Print TAC info before processing
+        printf("Folding TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
+               current->result ? current->result : "NULL",
+               current->arg1 ? current->arg1 : "NULL",
+               current->op ? current->op : "NULL",
+               current->arg2 ? current->arg2 : "NULL");
 
-The main part of the function iterates over each character of the string using a while loop. 
-For each character, it uses isdigit() to check if it's a numeric digit.
+        if (current->op != NULL && strcmp(current->op, "+") == 0 &&
+            isConstant(current->arg1) && isConstant(current->arg2)) {
+            int left = atoi(current->arg1);
+            int right = atoi(current->arg2);
+            int result = left + right;
 
-If any character is not a digit, the function immediately returns 'false'.
+            // Replace the operation with the result
+            char resultStr[20];
+            sprintf(resultStr, "%d", result);
+            safeStrReplace(&current->arg1, resultStr);  // Replace with the result string
+            safeStrReplace(&current->op, "=");          // Properly replace 'op'
+            safeStrReplace(&current->arg2, NULL);       // Clear arg2
+            changed = true;
 
-If the end of the string is reached without encountering any non-digit characters, 
-the function returns 'true', indicating the string is a numeric constant.
- */
+            // Debug: Confirm folding worked
+            printf("Folding applied: %s = %d\n", current->result, result);
+        }
+
+        current = current->next;
+    }
+
+    return changed;
+}
+
+bool constantPropagation(TAC** head) {
+    TAC* current = *head;
+    bool changed = false;
+
+    // Map to keep track of variable values
+    typedef struct VarValue {
+        char* varName;
+        char* value;
+        struct VarValue* next;
+    } VarValue;
+
+    VarValue* varTable = NULL;
+
+    while (current != NULL) {
+        // Debug: Print TAC info before processing
+        printf("Propagating TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
+               current->result ? current->result : "NULL",
+               current->arg1 ? current->arg1 : "NULL",
+               current->op ? current->op : "NULL",
+               current->arg2 ? current->arg2 : "NULL");
+
+        // If the operation is '=', and arg1 is a constant
+        if (current->op != NULL && strcmp(current->op, "=") == 0 && isConstant(current->arg1)) {
+            // Store the variable and its constant value
+            VarValue* newVar = malloc(sizeof(VarValue));
+            newVar->varName = strdup(current->result);
+            newVar->value = strdup(current->arg1);
+            newVar->next = varTable;
+            varTable = newVar;
+        } else {
+            // Replace arg1 if it's a variable with a known constant value
+            if (current->arg1 != NULL && !isConstant(current->arg1)) {
+                VarValue* var = varTable;
+                while (var != NULL) {
+                    if (strcmp(current->arg1, var->varName) == 0) {
+                        safeStrReplace(&current->arg1, var->value);
+                        changed = true;
+                        break;
+                    }
+                    var = var->next;
+                }
+            }
+            // Replace arg2 if it's a variable with a known constant value
+            if (current->arg2 != NULL && !isConstant(current->arg2)) {
+                VarValue* var = varTable;
+                while (var != NULL) {
+                    if (strcmp(current->arg2, var->varName) == 0) {
+                        safeStrReplace(&current->arg2, var->value);
+                        changed = true;
+                        break;
+                    }
+                    var = var->next;
+                }
+            }
+        }
+
+        current = current->next;
+    }
+
+    // Free the varTable
+    VarValue* var = varTable;
+    while (var != NULL) {
+        VarValue* temp = var;
+        var = var->next;
+        free(temp->varName);
+        free(temp->value);
+        free(temp);
+    }
+
+    return changed;
+}
+
+// Main optimization loop
+void optimizeTAC(TAC** head) {
+    bool changed;
+    int passCount = 0;
+
+    do {
+        changed = false;  // Reset flag before each pass
+        passCount++;
+        printf("=== Optimization Pass %d ===\n", passCount);
+
+        // Apply constant propagation
+        if (constantPropagation(head)) {
+            changed = true;  // Only mark changed if constantPropagation made changes
+            printf("Constant propagation applied\n");
+        }
+
+        // Apply constant folding (for addition only)
+        if (constantFolding(head)) {
+            changed = true;  // Only mark changed if constantFolding made changes
+            printf("Constant folding applied\n");
+        }
+
+    } while (changed);  // Repeat until no more changes are made
+
+    printOptimizedTAC("TACOptimized.ir", *head);
+    printf("Optimized TAC written to TACOptimized.ir\n");
+
+
+}
+
+// Utility function to check if a string is a valid constant
 bool isConstant(const char* str) {
     if (str == NULL || *str == '\0') {
-        return false; // Empty string is not a constant
+        return false;
     }
 
     // Optional: Handle negative numbers
@@ -43,199 +167,18 @@ bool isConstant(const char* str) {
         ++str;
     }
 
-    // Check if string is numeric
+    // Check if the remaining string is numeric
     while (*str) {
         if (!isdigit((unsigned char)*str)) {
-            return false; // Found a non-digit character
+            return false;
         }
         ++str;
     }
 
-    return true; // All characters were digits
+    return true;
 }
 
 
-/**
- * Checks if a string represents a valid variable name according to a simple naming convention.
- * 
- * @param str The string to check.
- * @return true if the string is a valid variable name, false otherwise.
- 
-Functionality:
--------------
-Initially, the function checks if the input is 'NULL' or an empty string, 
-returning false in either case since these don't represent valid variable names.
-
-It then checks if the first character is either a letter or an underscore, 
-as per the common naming convention that variable names must start with 
-an alphabetic character or underscore.
-
-For the rest of the string, the function checks each character to ensure 
-it is either a letter, a digit, or an underscore. This loop starts from the second character, 
-as the first character's check was already performed.
-
-If any character does not meet these criteria, the function returns 'false'.
-
-If the string passes all checks, it is considered a valid variable name, and the function returns 'true'.
- */
-bool isVariable(const char* str) {
-    if (str == NULL || *str == '\0') {
-        return false; // Null or empty string is not a variable
-    }
-
-    // Check if the first character is a letter or underscore
-    if (!isalpha((unsigned char)*str) && *str != '_') {
-        return false;
-    }
-
-    // Check remaining characters for letters, digits, or underscores
-    ++str; // Move past the first character
-    while (*str) {
-        if (!isalnum((unsigned char)*str) && *str != '_') {
-            return false; // Invalid character found
-        }
-        ++str;
-    }
-
-    return true; // String meets the criteria for a variable name
-}
-
-
-
-// A simplified constant folding example that only handles addition of integer constants. 
-void constantFolding(TAC** head) {
-    TAC* current = *head; // Current TAC instruction
-
-    // Apply constant folding optimization
-    while (current != NULL) {
-        if (strcmp(current->op, "+") == 0) {
-            // Check if both operands are constants
-            if (isConstant(current->arg1) && isConstant(current->arg2)) {
-                int result = atoi(current->arg1) + atoi(current->arg2); // Perform the addition
-                char resultStr[20];
-                sprintf(resultStr, "%d", result); // Convert the result to a string
-                free(current->arg1);
-                free(current->arg2);
-                current->arg1 = strdup(resultStr);
-                current->op = "="; // Change the operation to assignment";
-                current->arg2 = NULL;
-                printf("Constant folding applied\n");
-                printCurrentOptimizedTAC(current);
-            }
-        }
-        current = current->next; // Move to the next TAC instruction
-    }
-}
-
-// A simplified constant propagation example that only handles assignment of integer constants to variables.
-void constantPropagation(TAC** head) {
-    /*
-    This function performs constant propagation on the provided TAC list.
-    It iterates through the list and looks for assignments of integer constants to variables.
-    When such an assignment is found, it propagates the constant value to all uses of the variable.
-    */
-    TAC* current = *head;
-    while (current != NULL) {
-        if (current->op != NULL && strcmp(current->op, "assign") == 0) {
-            // Check if the argument is a constant
-            if (isConstant(current->arg1)) {
-                // Propagate the constant value to all uses of the variable
-                TAC* temp = current->next;
-                while (temp != NULL) {
-                    if (temp->arg1 != NULL && strcmp(temp->arg1, current->result) == 0) {
-                        free(temp->arg1);
-                        temp->arg1 = strdup(current->arg1);
-                    }
-                    if (temp->arg2 != NULL && strcmp(temp->arg2, current->result) == 0) {
-                        free(temp->arg2);
-                        temp->arg2 = strdup(current->arg1);
-                    }
-                    temp = temp->next;
-                }
-            }
-        }
-        current = current->next;
-    }
-}
-
-// A simplified copy propagation example that only handles assignment of variables to variables.
-// This function replaces all uses of a variable with the value of the variable being assigned.
-// For example, if the TAC contains "assign x, y", it will replace all uses of "y" with "x".
-
-void copyPropagation(TAC** head) {
-    TAC* current = *head;
-    while (current != NULL) {
-        if (current->op != NULL) {
-            // Check if the argument is a variable
-            if (isVariable(current->arg1)) {
-                // Propagate the variable value to all uses of the variable
-                TAC* temp = current->next;
-                while (temp != NULL) {
-                    if (temp->arg1 != NULL && strcmp(temp->arg1, current->result) == 0) {
-                        free(temp->arg1);
-                        temp->arg1 = strdup(current->arg1);
-                    }
-                    if (temp->arg2 != NULL && strcmp(temp->arg2, current->result) == 0) {
-                        free(temp->arg2);
-                        temp->arg2 = strdup(current->arg1);
-                    }
-                    temp = temp->next;
-                }
-            }
-        }
-        current = current->next;
-    }
-}
-
-// A simplified dead code elimination example that only handles removal of unused assignments.
-// This function removes assignments that are not used in any subsequent TAC instructions.
-// For example, if the TAC contains "assign x, 5" and "assign y, x", and "x" is not used after that, 
-// it will remove the "assign x, 5" instruction.
-
-void deadCodeElimination(TAC** head) {
-    TAC* current = *head; // Current TAC instruction
-    TAC* prev = NULL;     // Previous TAC instruction
-
-    while (current != NULL) {
-        if (current->op != NULL && strcmp(current->op, "assign") == 0) {
-            // Check if the result of the assignment is used
-            int isUsed = 0;
-            TAC* temp = current->next;
-            while (temp != NULL) {
-                if (temp->arg1 != NULL && strcmp(temp->arg1, current->result) == 0) {
-                    isUsed = 1;
-                    break;
-                }
-                if (temp->arg2 != NULL && strcmp(temp->arg2, current->result) == 0) {
-                    isUsed = 1;
-                    break;
-                }
-                temp = temp->next;
-            }
-            if (!isUsed) {
-                // Remove the assignment
-                if (current == *head) {
-                    *head = current->next;
-                } else {
-                    TAC* prev = *head;
-                    while (prev->next != current) {
-                        prev = prev->next;
-                    }
-                    prev->next = current->next;
-                }
-                free(current->op);
-                free(current->arg1);
-                free(current->arg2);
-                free(current->result);
-                free(current);
-                current = prev;
-            }
-        }
-        current = current->next;
-    }
-}
-
-// Print the optimized TAC list to a file
 void printOptimizedTAC(const char* filename, TAC* head) {
     FILE* outputFile = fopen(filename, "w");
     if (outputFile == NULL) {
@@ -245,34 +188,75 @@ void printOptimizedTAC(const char* filename, TAC* head) {
 
     TAC* current = head;
     while (current != NULL) {
-        if(current->result != NULL)
+        // If all fields are NULL, this might be an extra node; skip it
+        if (current->result == NULL && current->arg1 == NULL && current->op == NULL && current->arg2 == NULL) {
+            current = current->next;
+            continue;
+        }
+
+        // Debug: Print each part to ensure it's not corrupted
+        printf("Printing TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
+               current->result ? current->result : "NULL",
+               current->arg1 ? current->arg1 : "NULL",
+               current->op ? current->op : "NULL",
+               current->arg2 ? current->arg2 : "NULL");
+
+        // Write to the file
+        if (current->result != NULL) {
             fprintf(outputFile, "%s = ", current->result);
-        if(current->arg1 != NULL)
-            fprintf(outputFile, "%s ", current->arg1);
-        if(current->op != NULL && (strcmp(current->op, "=") != 0)) // Skip printing the "=" operator
-            fprintf(outputFile, "%s ", current->op);
-        if(current->arg2 != NULL)
-            fprintf(outputFile, "%s ", current->arg2);
+        } else {
+            fprintf(outputFile, "");
+        }
+
+        if (current->arg1 != NULL) {
+            fprintf(outputFile, "%s", current->arg1);
+        }
+
+        if (current->op != NULL && strcmp(current->op, "=") != 0) {
+            fprintf(outputFile, " %s", current->op);
+        }
+
+        if (current->arg2 != NULL) {
+            fprintf(outputFile, " %s", current->arg2);
+        }
+
         fprintf(outputFile, "\n");
+
         current = current->next;
     }
-    printf("Optimized TAC written to %s\n", filename);
+
     fclose(outputFile);
 }
 
-// Print current TAC instruction
-void printCurrentOptimizedTAC(TAC* current) {
-    if(current->result != NULL)
-        printf("%s = ", current->result);
-    if(current->arg1 != NULL)
-        printf("%s ", current->arg1);
-    if(current->op != NULL)
-        printf("%s ", current->op);
-    if(current->arg2 != NULL)
-        printf("%s ", current->arg2);
-    printf("\n");
+// Use this function to create TAC entries with dynamically allocated strings
+TAC* createTAC(const char* result, const char* arg1, const char* op, const char* arg2) {
+    TAC* tac = (TAC*)malloc(sizeof(TAC));
+    if (tac == NULL) {
+        perror("Failed to allocate memory for TAC");
+        exit(EXIT_FAILURE);
+    }
+    tac->result = result ? strdup(result) : NULL;
+    tac->arg1 = arg1 ? strdup(arg1) : NULL;
+    tac->op = op ? strdup(op) : NULL;
+    tac->arg2 = arg2 ? strdup(arg2) : NULL;
+    tac->next = NULL;
+    return tac;
 }
 
+void freeTACList(TAC* head) {
+    TAC* current = head;
+    while (current != NULL) {
+        TAC* next = current->next;
 
+        // Free all dynamically allocated strings
+        if (current->result) free(current->result);
+        if (current->arg1) free(current->arg1);
+        if (current->op) free(current->op);
+        if (current->arg2) free(current->arg2);
 
-//porpogate then fold in a loop till you can't no more
+        // Free the TAC node itself
+        free(current);
+
+        current = next;
+    }
+}

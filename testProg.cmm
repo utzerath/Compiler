@@ -3,6 +3,7 @@ int y;
 int a;
 int b;
 int c;
+c = 2;
 x = 1;
 a = 12;
 b = 23 + 10 + 5;

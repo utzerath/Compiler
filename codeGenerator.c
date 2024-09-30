@@ -1,33 +1,30 @@
 #include "codeGenerator.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>  // Include for isdigit
-#include <string.h> // Include for strlen and strcmp
+#include <ctype.h>  // For isdigit
+#include <string.h> // For strlen, strcmp, strdup
 
-int stackOffset = 0;  // Initialize this at the start of the program
+int stackOffset = 0;  // Initialize at the start of the program
 static FILE* outputFile;
 
-// Structure to represent temporary registers
-typedef struct {
-    char* name;   // Name of the register, e.g., "$t0"
-    bool inUse;   // Whether the register is currently in use
-    bool spilled; // Whether the register has been spilled
-} MIPSRegister;
-
-// Array of temporary registers, used for register allocation and tracking
+// Array of temporary registers (defined in codeGenerator.h)
 MIPSRegister tempRegisters[NUM_TEMP_REGISTERS] = {
-    {"$t0", false}, {"$t1", false}, {"$t2", false}, {"$t3", false},
-    {"$t4", false}, {"$t5", false}, {"$t6", false}, {"$t7", false},
-    {"$t8", false}, {"$t9", false}
+    {"$t0", false, false, NULL, 0},
+    {"$t1", false, false, NULL, 0},
+    {"$t2", false, false, NULL, 0},
+    {"$t3", false, false, NULL, 0},
+    {"$t4", false, false, NULL, 0},
+    {"$t5", false, false, NULL, 0},
+    {"$t6", false, false, NULL, 0},
+    {"$t7", false, false, NULL, 0},
+    {"$t8", false, false, NULL, 0},
+    {"$t9", false, false, NULL, 0}
 };
 
 // List to track variable declarations dynamically
-typedef struct VarList {
-    char* varName;
-    struct VarList* next;
-} VarList;
-
 VarList* declaredVariables = NULL;
+
+// Function implementations
 
 // Declare variables dynamically from the TAC
 void declareVariablesFromTAC(TAC* tacInstructions) {
@@ -91,84 +88,152 @@ void initCodeGenerator(const char* outputFilename) {
     }
 }
 
+// Generate MIPS code from TAC
 void generateMIPS(TAC* tacInstructions) {
     TAC* current = tacInstructions;
 
-    // Declare variables in memory (only variables, not immediate values)
-    declareVariablesFromTAC(tacInstructions);  // Dynamically declare variables from TAC
+    // Declare variables in memory
+    declareVariablesFromTAC(tacInstructions);
 
     // Start the text section and main label
     fprintf(outputFile, ".text\n.globl main\nmain:\n");
 
     while (current != NULL) {
-        printCurrentTAC(current);
-
-        // Assignment operation (e.g., x = 1)
+        // Assignment operation (e.g., x = y)
         if (strcmp(current->op, "=") == 0) {
-            int regIndex = allocateRegister();
-            if (regIndex == -1) {
-                fprintf(stderr, "Register allocation failed\n");
-                return;
-            }
+            int regResult;
 
-            // If the right-hand side (arg1) is an immediate value, use li (load immediate)
+            // Handle immediate value
             if (isImmediate(current->arg1)) {
-                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regIndex].name, current->arg1);
+                regResult = allocateRegisterForVariable(current->result);
+                if (regResult == -1) {
+                    fprintf(stderr, "Register allocation failed\n");
+                    return;
+                }
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regResult].name, current->arg1);
             } else {
-                // Otherwise, load the variable from memory
-                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regIndex].name, current->arg1);
+                // Get or load arg1 into a register
+                int regArg1 = getRegisterForVariable(current->arg1);
+                if (regArg1 == -1) {
+                    regArg1 = allocateRegisterForVariable(current->arg1);
+                    if (regArg1 == -1) {
+                        fprintf(stderr, "Register allocation failed\n");
+                        return;
+                    }
+                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg1].name, current->arg1);
+                }
+                regResult = allocateRegisterForVariable(current->result);
+                if (regResult == -1) {
+                    fprintf(stderr, "Register allocation failed\n");
+                    return;
+                }
+                fprintf(outputFile, "\tmove %s, %s\n", tempRegisters[regResult].name, tempRegisters[regArg1].name);
             }
 
-            // Store the result into memory (only for variables, not for temporary variables)
+            // Store the result into memory if it's a variable
             if (!isTemporaryVariable(current->result)) {
-                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regIndex].name, current->result);
+                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regResult].name, current->result);
             }
 
-            deallocateRegister(regIndex);
+            // Deallocate temporary variables
+            if (isTemporaryVariable(current->arg1)) {
+                deallocateRegister(regResult);
+            }
         }
-
         // Addition operation (e.g., x = y + z)
         else if (strcmp(current->op, "+") == 0) {
-            int reg1 = allocateRegister();
-            int reg2 = allocateRegister();
-            int regRes = allocateRegister();
+            int regArg1, regArg2, regResult;
 
-            // Load arg1 (either as an immediate or from memory)
+            // Handle arg1
             if (isImmediate(current->arg1)) {
-                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[reg1].name, current->arg1);
+                regArg1 = allocateRegister();
+                if (regArg1 == -1) {
+                    fprintf(stderr, "Register allocation failed\n");
+                    return;
+                }
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regArg1].name, current->arg1);
             } else {
-                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[reg1].name, current->arg1);
+                regArg1 = getRegisterForVariable(current->arg1);
+                if (regArg1 == -1) {
+                    regArg1 = allocateRegisterForVariable(current->arg1);
+                    if (regArg1 == -1) {
+                        fprintf(stderr, "Register allocation failed\n");
+                        return;
+                    }
+                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg1].name, current->arg1);
+                }
             }
 
-            // Load arg2 (either as an immediate or from memory)
+            // Handle arg2
             if (isImmediate(current->arg2)) {
-                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[reg2].name, current->arg2);
+                regArg2 = allocateRegister();
+                if (regArg2 == -1) {
+                    fprintf(stderr, "Register allocation failed\n");
+                    return;
+                }
+                fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regArg2].name, current->arg2);
             } else {
-                fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[reg2].name, current->arg2);
+                regArg2 = getRegisterForVariable(current->arg2);
+                if (regArg2 == -1) {
+                    regArg2 = allocateRegisterForVariable(current->arg2);
+                    if (regArg2 == -1) {
+                        fprintf(stderr, "Register allocation failed\n");
+                        return;
+                    }
+                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg2].name, current->arg2);
+                }
             }
 
             // Perform the addition
-            fprintf(outputFile, "\tadd %s, %s, %s\n", tempRegisters[regRes].name, tempRegisters[reg1].name, tempRegisters[reg2].name);
+            regResult = allocateRegisterForVariable(current->result);
+            if (regResult == -1) {
+                fprintf(stderr, "Register allocation failed\n");
+                return;
+            }
+            fprintf(outputFile, "\tadd %s, %s, %s\n", tempRegisters[regResult].name, tempRegisters[regArg1].name, tempRegisters[regArg2].name);
 
-            // Store the result in memory only if it's a variable (not a temporary)
+            // Store the result if necessary
             if (!isTemporaryVariable(current->result)) {
-                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regRes].name, current->result);
+                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regResult].name, current->result);
             }
 
-            deallocateRegister(reg1);
-            deallocateRegister(reg2);
-            deallocateRegister(regRes);
+            // Deallocate temporary variables
+            if (isTemporaryVariable(current->arg1)) {
+                deallocateRegister(regArg1);
+            }
+            if (isTemporaryVariable(current->arg2)) {
+                deallocateRegister(regArg2);
+            }
+            if (isTemporaryVariable(current->result)) {
+                deallocateRegister(regResult);
+            }
         }
-
         // Handle write operation (write x)
         else if (strcmp(current->op, "write") == 0) {
             fprintf(outputFile, "\tli $v0, 1\n");  // Load syscall code for print integer
             if (!isImmediate(current->result)) {
-                fprintf(outputFile, "\tlw $a0, %s\n", current->result);  // Load variable from memory
+                int regResult = getRegisterForVariable(current->result);
+                if (regResult == -1) {
+                    regResult = allocateRegisterForVariable(current->result);
+                    if (regResult == -1) {
+                        fprintf(stderr, "Register allocation failed\n");
+                        return;
+                    }
+                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regResult].name, current->result);
+                }
+                fprintf(outputFile, "\tmove $a0, %s\n", tempRegisters[regResult].name);
             } else {
                 fprintf(outputFile, "\tli $a0, %s\n", current->result);  // Load immediate value directly
             }
             fprintf(outputFile, "\tsyscall\n");
+        }
+
+        // Deallocate temporary variables
+        if (isTemporaryVariable(current->result)) {
+            int regIndex = getRegisterForVariable(current->result);
+            if (regIndex != -1) {
+                deallocateRegister(regIndex);
+            }
         }
 
         current = current->next;
@@ -178,7 +243,7 @@ void generateMIPS(TAC* tacInstructions) {
     fprintf(outputFile, "\tli $v0, 10\n\tsyscall\n");
 }
 
-
+// Check if a variable is a temporary variable
 bool isTemporaryVariable(char* varName) {
     return (varName != NULL && varName[0] == 't' && isdigit(varName[1]));
 }
@@ -192,7 +257,7 @@ void finalizeCodeGenerator(const char* outputFilename) {
     }
 }
 
-// Helper function: Check if an operand is an immediate value or a variable
+// Helper function: Check if an operand is an immediate value
 bool isImmediate(char* operand) {
     if (operand == NULL) return false;
     for (int i = 0; i < strlen(operand); i++) {
@@ -206,32 +271,41 @@ bool isImmediate(char* operand) {
 // Register allocation logic
 int allocateRegister() {
     for (int i = 0; i < NUM_TEMP_REGISTERS; i++) {
-        if (!tempRegisters[i].inUse) {
+        if (!tempRegisters[i].inUse && !tempRegisters[i].spilled) {
             tempRegisters[i].inUse = true;
+            tempRegisters[i].varName = NULL;  // Initialize varName
             return i; // Return the register index
         }
     }
+    // All registers are in use; need to spill one
     int regToSpill = pickRegisterToSpill();
-    spillRegister(regToSpill); 
-    tempRegisters[regToSpill].inUse = true; 
+    spillRegister(regToSpill);
     return regToSpill;
 }
 
+// Spill a register to memory
 void spillRegister(int regIndex) {
-    fprintf(outputFile, "\tsw %s, %d($sp)\n", tempRegisters[regIndex].name, stackOffset);
-    stackOffset -= 4;
-    tempRegisters[regIndex].inUse = false;
+    // Adjust stack pointer to allocate space
+    fprintf(outputFile, "\taddi $sp, $sp, -4\n");
+    // Store the current register value to the stack
+    fprintf(outputFile, "\tsw %s, 0($sp)\n", tempRegisters[regIndex].name);
     tempRegisters[regIndex].spilled = true;
+    tempRegisters[regIndex].inUse = false;
 }
 
+// Restore a spilled register from memory
 void restoreRegister(int regIndex) {
     if (tempRegisters[regIndex].spilled) {
-        fprintf(outputFile, "\tlw %s, %d($sp)\n", tempRegisters[regIndex].name, stackOffset + 4);
-        stackOffset += 4;
+        // Load the value from the stack
+        fprintf(outputFile, "\tlw %s, 0($sp)\n", tempRegisters[regIndex].name);
+        // Adjust stack pointer to deallocate space
+        fprintf(outputFile, "\taddi $sp, $sp, 4\n");
         tempRegisters[regIndex].spilled = false;
+        tempRegisters[regIndex].inUse = true;
     }
 }
 
+// Pick a register to spill (simple strategy: pick the first in-use register)
 int pickRegisterToSpill() {
     for (int i = 0; i < NUM_TEMP_REGISTERS; i++) {
         if (tempRegisters[i].inUse) {
@@ -239,28 +313,60 @@ int pickRegisterToSpill() {
         }
     }
     fprintf(stderr, "Error: No register available for spilling.\n");
-    exit(EXIT_FAILURE); 
+    exit(EXIT_FAILURE);
 }
 
+// Deallocate a register
 void deallocateRegister(int regIndex) {
     if (regIndex >= 0 && regIndex < NUM_TEMP_REGISTERS) {
         tempRegisters[regIndex].inUse = false;
+        if (tempRegisters[regIndex].varName != NULL) {
+            free(tempRegisters[regIndex].varName);
+            tempRegisters[regIndex].varName = NULL;
+        }
     }
 }
 
+// Get the register index for a variable
+int getRegisterForVariable(char* varName) {
+    for (int i = 0; i < NUM_TEMP_REGISTERS; i++) {
+        if (tempRegisters[i].varName != NULL && strcmp(tempRegisters[i].varName, varName) == 0) {
+            if (tempRegisters[i].inUse) {
+                return i;  // Register is in use
+            } else if (tempRegisters[i].spilled) {
+                restoreRegister(i);
+                return i;
+            }
+        }
+    }
+    return -1; // Variable not found in any register
+}
+
+// Allocate a register for a variable
+int allocateRegisterForVariable(char* varName) {
+    int regIndex = allocateRegister();
+    if (regIndex != -1) {
+        if (tempRegisters[regIndex].varName != NULL) {
+            free(tempRegisters[regIndex].varName);
+        }
+        tempRegisters[regIndex].varName = strdup(varName);
+        tempRegisters[regIndex].inUse = true;
+    }
+    return regIndex;
+}
+
+// Print the current TAC instruction (for debugging)
 void printCurrentTAC(TAC* tac) {
-    TAC* current = tac;
-    while (current != NULL) {
-        printf("\n--- CURRENT TAC %s ---\n", current->op);
-        if (strcmp(current->op, "=") == 0) {
-            printf("%s = %s\n", current->result, current->arg1);
+    if (tac != NULL) {
+        printf("\n--- CURRENT TAC %s ---\n", tac->op);
+        if (strcmp(tac->op, "=") == 0) {
+            printf("%s = %s\n", tac->result, tac->arg1);
         } else {
-            if (current->result != NULL) printf("%s = ", current->result);
-            if (current->arg1 != NULL) printf("%s ", current->arg1);
-            if (current->op != NULL) printf("%s ", current->op);
-            if (current->arg2 != NULL) printf("%s ", current->arg2);
+            if (tac->result != NULL) printf("%s = ", tac->result);
+            if (tac->arg1 != NULL) printf("%s ", tac->arg1);
+            if (tac->op != NULL) printf("%s ", tac->op);
+            if (tac->arg2 != NULL) printf("%s ", tac->arg2);
             printf("\n");
         }
-        current = current->next;
     }
 }

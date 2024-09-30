@@ -8,8 +8,21 @@
 
 #define NUM_TEMP_REGISTERS 10
 
-// Pick a register to spill (e.g., use an LRU or first available strategy)
-int pickRegisterToSpill();
+// Structure to represent temporary registers
+typedef struct {
+    char* name;     // Name of the register, e.g., "$t0"
+    bool inUse;     // Whether the register is currently in use
+    bool spilled;   // Whether the register has been spilled
+    char* varName;  // Name of the variable stored in this register
+} MIPSRegister;
+
+// List to track variable declarations dynamically
+typedef struct VarList {
+    char* varName;
+    struct VarList* next;
+} VarList;
+
+// Function declarations
 
 // Initializes code generation, setting up any necessary structures
 void initCodeGenerator(const char* outputFilename);
@@ -32,10 +45,13 @@ void spillRegister(int regIndex);
 // Restore a spilled register from memory (stack)
 void restoreRegister(int regIndex);
 
+// Pick a register to spill (e.g., use an LRU or first available strategy)
+int pickRegisterToSpill();
+
 // Check if the operand is an immediate value
 bool isImmediate(char* operand);
 
-// Print the current TAC instruction
+// Print the current TAC instruction (for debugging)
 void printCurrentTAC(TAC* tac);
 
 // Checks if a variable is a temporary variable (e.g., t0, t1, etc.)
@@ -52,5 +68,11 @@ bool isVariableDeclared(char* varName);
 
 // Generate the .data section for declared variables
 void generateDataSection();
+
+// Get the register index for a variable
+int getRegisterForVariable(char* varName);
+
+// Allocate a register for a variable
+int allocateRegisterForVariable(char* varName);
 
 #endif // CODE_GENERATOR_H

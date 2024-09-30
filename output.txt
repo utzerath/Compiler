@@ -1,32 +1,32 @@
 .data
 y: .word 0
-b: .word 0
+var_b: .word 0
 a: .word 0
 x: .word 0
 c: .word 0
 .text
 .globl main
 main:
-	li $t0, 2
-	sw $t0, c
-	li $t1, 1
-	sw $t1, x
-	li $t2, 12
-	sw $t2, a
-	li $t3, 15
-	li $t3, 38
-	li $t3, 38
-	sw $t3, b
-	li $t4, 13
-	li $t4, 25
-	li $t4, 25
-	sw $t4, x
-	li $t5, 17
-	li $t5, 19
-	li $t5, 57
-	li $t5, 69
-	li $t5, 70
-	li $t5, 70
-	sw $t5, y
-	li $v0, 10
-	syscall
+    li $t0, 2
+    sw $t0, c
+    li $t1, 1
+    sw $t1, x
+    li $t2, 12
+    sw $t2, a
+    li $t3, 15
+    li $t3, 38
+    li $t3, 38
+    sw $t3, var_b
+    li $t4, 13
+    li $t4, 25
+    li $t4, 25
+    sw $t4, x
+    li $t5, 17
+    li $t5, 19
+    li $t5, 57
+    li $t5, 69
+    li $t5, 70
+    li $t5, 70
+    sw $t5, y
+    li $v0, 10
+    syscall

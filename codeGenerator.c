@@ -4,6 +4,8 @@
 #include <ctype.h>  // For isdigit
 #include <string.h> // For strlen, strcmp, strdup
 
+#define VAR_PREFIX "var_"  // Prefix for variable names in assembly
+
 int stackOffset = 0;  // Initialize at the start of the program
 static FILE* outputFile;
 
@@ -74,7 +76,7 @@ void generateDataSection() {
     fprintf(outputFile, ".data\n");
     VarList* current = declaredVariables;
     while (current != NULL) {
-        fprintf(outputFile, "%s: .word 0\n", current->varName);  // Declare variable with initial value 0
+        fprintf(outputFile, "%s%s: .word 0\n", VAR_PREFIX, current->varName);  // Declare variable with initial value 0
         current = current->next;
     }
 }
@@ -120,7 +122,7 @@ void generateMIPS(TAC* tacInstructions) {
                         fprintf(stderr, "Register allocation failed\n");
                         return;
                     }
-                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg1].name, current->arg1);
+                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regArg1].name, VAR_PREFIX, current->arg1);
                 }
                 regResult = allocateRegisterForVariable(current->result);
                 if (regResult == -1) {
@@ -132,7 +134,7 @@ void generateMIPS(TAC* tacInstructions) {
 
             // Store the result into memory if it's a variable
             if (!isTemporaryVariable(current->result)) {
-                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regResult].name, current->result);
+                fprintf(outputFile, "\tsw %s, %s%s\n", tempRegisters[regResult].name, VAR_PREFIX, current->result);
             }
 
             // Deallocate temporary variables
@@ -160,7 +162,7 @@ void generateMIPS(TAC* tacInstructions) {
                         fprintf(stderr, "Register allocation failed\n");
                         return;
                     }
-                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg1].name, current->arg1);
+                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regArg1].name, VAR_PREFIX, current->arg1);
                 }
             }
 
@@ -180,7 +182,7 @@ void generateMIPS(TAC* tacInstructions) {
                         fprintf(stderr, "Register allocation failed\n");
                         return;
                     }
-                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regArg2].name, current->arg2);
+                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regArg2].name, VAR_PREFIX, current->arg2);
                 }
             }
 
@@ -194,7 +196,7 @@ void generateMIPS(TAC* tacInstructions) {
 
             // Store the result if necessary
             if (!isTemporaryVariable(current->result)) {
-                fprintf(outputFile, "\tsw %s, %s\n", tempRegisters[regResult].name, current->result);
+                fprintf(outputFile, "\tsw %s, %s%s\n", tempRegisters[regResult].name, VAR_PREFIX, current->result);
             }
 
             // Deallocate temporary variables
@@ -219,7 +221,7 @@ void generateMIPS(TAC* tacInstructions) {
                         fprintf(stderr, "Register allocation failed\n");
                         return;
                     }
-                    fprintf(outputFile, "\tlw %s, %s\n", tempRegisters[regResult].name, current->result);
+                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regResult].name, VAR_PREFIX, current->result);
                 }
                 fprintf(outputFile, "\tmove $a0, %s\n", tempRegisters[regResult].name);
             } else {
@@ -242,6 +244,8 @@ void generateMIPS(TAC* tacInstructions) {
     // Add program termination syscall
     fprintf(outputFile, "\tli $v0, 10\n\tsyscall\n");
 }
+
+
 
 // Check if a variable is a temporary variable
 bool isTemporaryVariable(char* varName) {

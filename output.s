@@ -28,5 +28,17 @@ main:
 	li $t5, 70
 	li $t5, 70
 	sw $t5, var_y
+	li $v0, 1
+	move $a0, $t1
+	syscall
+	li $v0, 11
+	li $a0, 10
+	syscall
+	li $v0, 1
+	move $a0, $t5
+	syscall
+	li $v0, 11
+	li $a0, 10
+	syscall
 	li $v0, 10
 	syscall

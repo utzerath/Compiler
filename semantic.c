@@ -20,15 +20,35 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
         
         case NodeType_VarDecl:
-            // Check if variable is already declared, if not, add it to the symbol table
             if (lookupSymbol(symTab, node->varDecl.varName) == NULL) {
                 addSymbol(symTab, node->varDecl.varName, node->varDecl.varType);
                 printf("Added variable %s of type %s to the symbol table\n", node->varDecl.varName, node->varDecl.varType);
             } else {
-                // Only trigger error if this node represents a duplicate declaration
                 fprintf(stderr, "Semantic error: Variable %s is already declared\n", node->varDecl.varName);
             }
             break;
+
+        case NodeType_WriteStmt: {
+            printf("Generating TAC for write statement\n");
+
+            // Get the operand for the expression to write
+            char* operand = createOperand(node->writeStmt.expr);
+
+            // Generate the TAC for the write statement
+            TAC* tac = (TAC*)malloc(sizeof(TAC));
+            if (!tac) {
+                fprintf(stderr, "Error: Memory allocation failed for TAC\n");
+                return;
+            }
+            tac->arg1 = operand;  // The operand being written
+            tac->op = strdup("write");  // The 'write' operation
+            tac->result = NULL;  // No result for 'write'
+            tac->next = NULL;
+
+            appendTAC(&tacHead, tac);
+            break;
+        }
+
         
         case NodeType_StmtList:
             semanticAnalysis(node->stmtList.stmt, symTab);
@@ -38,10 +58,8 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
         case NodeType_AssignStmt: {
             printf("Generating TAC for assignment statement\n");
 
-            // Generate TAC for the right-hand side expression
             char* rhs = createOperand(node->assignStmt.expr);
 
-            // Generate the TAC for the assignment
             TAC* tac = (TAC*)malloc(sizeof(TAC));
             tac->arg1 = rhs;
             tac->op = strdup("=");
@@ -49,12 +67,10 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             tac->next = NULL;
 
             appendTAC(&tacHead, tac);
-        break;
+            break;
         }
 
-        
         case NodeType_Expr:
-            // Check the left and right expressions
             semanticAnalysis(node->expr.left, symTab);
             semanticAnalysis(node->expr.right, symTab);
             break;
@@ -62,11 +78,9 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
         case NodeType_BinOp: {
             printf("Performing semantic analysis on binary operation\n");
 
-            // First, perform semantic analysis on both operands
             semanticAnalysis(node->binOp.left, symTab);
             semanticAnalysis(node->binOp.right, symTab);
 
-            // Check if both operands are valid identifiers
             if (node->binOp.left->type == NodeType_SimpleID &&
                 lookupSymbol(symTab, node->binOp.left->simpleID.name) == NULL) {
                 fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.left->simpleID.name);
@@ -76,22 +90,18 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
                 fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.right->simpleID.name);
             }
             break;
-            }
+        }
 
-        
         case NodeType_SimpleID:
-            // Check if the variable has been declared before use
             if (lookupSymbol(symTab, node->simpleID.name) == NULL) {
                 fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->simpleID.name);
             }
             break;
         
         case NodeType_SimpleExpr:
-            // No need to check for numbers, they're always valid
             break;
-        
+
         case NodeType_BlockStmt:
-            // Recursively analyze the list of statements in the block
             semanticAnalysis(node->blockStmt.stmtList, symTab);
             break;
 
@@ -100,7 +110,6 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
     }
 
-    // Generate TAC for expressions
     if (node->type == NodeType_Expr || node->type == NodeType_SimpleExpr) {
         TAC* tac = generateTACForExpr(node);
         printTAC(tac);
@@ -156,9 +165,7 @@ TAC* generateTACForExpr(ASTNode* expr) {
             instruction->result = createTempVar();
             break;
         }
-
-        // Add cases for other expression types...
-
+        
         default:
             free(instruction);
             return NULL;
@@ -216,21 +223,27 @@ char* createOperand(ASTNode* node) {
     }
 }
 
-
 void printTAC(TAC* tac) {
     if (!tac) return;
 
-    // Print the TAC instruction with non-null fields
-    if(tac->result != NULL)
-        printf("%s = ", tac->result);
-    if(tac->arg1 != NULL)
-        printf("%s ", tac->arg1);
-    if(tac->op != NULL)
-        printf("%s ", tac->op);
-    if(tac->arg2 != NULL)
-        printf("%s ", tac->arg2);
-    printf("\n");
+    // Handle 'write' operation first
+    if (tac->op != NULL && strcmp(tac->op, "write") == 0) {
+        // Print the operation first followed by the operand
+        printf("%s %s\n", tac->op, tac->arg1);  // Correctly prints "write x"
+    } else {
+        // Handle other types of instructions
+        if (tac->result != NULL)
+            printf("%s = ", tac->result);
+        if (tac->arg1 != NULL)
+            printf("%s ", tac->arg1);
+        if (tac->op != NULL)
+            printf("%s ", tac->op);
+        if (tac->arg2 != NULL)
+            printf("%s ", tac->arg2);
+        printf("\n");
+    }
 }
+
 
 // Print the TAC list to a file
 // This function is provided for reference, you can modify it as needed
@@ -243,7 +256,10 @@ void printTACToFile(const char* filename, TAC* tac) {
     }   
     TAC* current = tac;
     while (current != NULL) {
-        if (strcmp(current->op,"=") == 0) {
+        if (strcmp(current->op, "write") == 0) {
+            // Print the write operation first, followed by the argument
+            fprintf(file, "%s %s\n", current->op, current->arg1); } // Correct format: "write x"
+        else if (strcmp(current->op,"=") == 0) {
             fprintf(file, "%s = %s\n", current->result, current->arg1);
         } 
         else {

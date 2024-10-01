@@ -68,6 +68,11 @@ bool constantPropagation(TAC** head) {
     VarValue* varTable = NULL;
 
     while (current != NULL) {
+        // Skip write statements entirely
+        if (current->op != NULL && strcmp(current->op, "write") == 0) {
+            current = current->next;
+            continue;
+        }
         // Debug: Print TAC info before processing
         printf("Propagating TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
                current->result ? current->result : "NULL",
@@ -188,45 +193,43 @@ void printOptimizedTAC(const char* filename, TAC* head) {
 
     TAC* current = head;
     while (current != NULL) {
-        // If all fields are NULL, this might be an extra node; skip it
+        // Skip empty TAC nodes
         if (current->result == NULL && current->arg1 == NULL && current->op == NULL && current->arg2 == NULL) {
             current = current->next;
             continue;
         }
 
-        // Debug: Print each part to ensure it's not corrupted
-        printf("Printing TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
-               current->result ? current->result : "NULL",
-               current->arg1 ? current->arg1 : "NULL",
-               current->op ? current->op : "NULL",
-               current->arg2 ? current->arg2 : "NULL");
-
-        // Write to the file
-        if (current->result != NULL) {
-            fprintf(outputFile, "%s = ", current->result);
-        } else {
-            fprintf(outputFile, "");
+        // Handle 'write' operation
+        if (current->op != NULL && strcmp(current->op, "write") == 0) {
+            fprintf(outputFile, "%s %s\n", current->op, current->arg1);  // Write operation is special case
         }
-
-        if (current->arg1 != NULL) {
-            fprintf(outputFile, "%s", current->arg1);
+        // Handle standard operations (result = arg1 op arg2)
+        else if (current->op != NULL && strcmp(current->op, "=") == 0) {
+            fprintf(outputFile, "%s = %s\n", current->result, current->arg1);
+        } 
+        else {
+            // Print normal operations
+            if (current->result != NULL) {
+                fprintf(outputFile, "%s = ", current->result);
+            }
+            if (current->arg1 != NULL) {
+                fprintf(outputFile, "%s", current->arg1);
+            }
+            if (current->op != NULL && strcmp(current->op, "=") != 0) {
+                fprintf(outputFile, " %s", current->op);
+            }
+            if (current->arg2 != NULL) {
+                fprintf(outputFile, " %s", current->arg2);
+            }
+            fprintf(outputFile, "\n");
         }
-
-        if (current->op != NULL && strcmp(current->op, "=") != 0) {
-            fprintf(outputFile, " %s", current->op);
-        }
-
-        if (current->arg2 != NULL) {
-            fprintf(outputFile, " %s", current->arg2);
-        }
-
-        fprintf(outputFile, "\n");
 
         current = current->next;
     }
 
     fclose(outputFile);
 }
+
 
 // Use this function to create TAC entries with dynamically allocated strings
 TAC* createTAC(const char* result, const char* arg1, const char* op, const char* arg2) {

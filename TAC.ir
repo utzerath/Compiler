@@ -13,3 +13,5 @@ t6 = b + t5
 t7 = a + t6 
 t8 = x + t7 
 y = t8
+write x
+write y

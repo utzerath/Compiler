@@ -13,3 +13,5 @@ t6 = 57
 t7 = 69
 t8 = 70
 y = 70
+write x
+write y

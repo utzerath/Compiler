@@ -60,10 +60,9 @@ void traverseAST(ASTNode* node, int level) {
             traverseAST(node->binOp.right, level + 1);
             break;
         case NodeType_WriteStmt:
-            printf("WriteStmt: write %s\n", node->writeStmt.expr->simpleID.name);  // Assuming you're writing a variable
-            //traverseAST(node->writeStmt.expr, level + 1);  // Traverse the expression being written this isnt working but will need if we ever add write (write x+ y)
+            printf("WriteStmt: write expression\n");
+            traverseAST(node->writeStmt.expr, level + 1);  // Traverse the expression being written
             break;
-
         default:
             printf("Unknown node type: %d\n", node->type);  // Add more specific debugging
             break;
@@ -110,8 +109,8 @@ void freeAST(ASTNode* node) {
             freeAST(node->binOp.left);
             freeAST(node->binOp.right);
             break;
-        case NodeType_WriteStmt:  // <-- Add case for freeing write statements
-            free(node->writeStmt.varName);
+        case NodeType_WriteStmt:
+            freeAST(node->writeStmt.expr);  // Free the expression, not just the varName
             break;
         default:
             break;
@@ -166,8 +165,9 @@ ASTNode* createNode(NodeType type) {
             newNode->binOp.right = NULL;
             break;
         case NodeType_WriteStmt:
-            newNode->writeStmt.varName = NULL;
+            newNode->writeStmt.expr = NULL;
             break;
+
         default:
             break;
     }

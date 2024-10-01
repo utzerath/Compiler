@@ -11,17 +11,18 @@ static FILE* outputFile;
 
 // Array of temporary registers (defined in codeGenerator.h)
 MIPSRegister tempRegisters[NUM_TEMP_REGISTERS] = {
-    {"$t0", false, false, NULL, 0},
-    {"$t1", false, false, NULL, 0},
-    {"$t2", false, false, NULL, 0},
-    {"$t3", false, false, NULL, 0},
-    {"$t4", false, false, NULL, 0},
-    {"$t5", false, false, NULL, 0},
-    {"$t6", false, false, NULL, 0},
-    {"$t7", false, false, NULL, 0},
-    {"$t8", false, false, NULL, 0},
-    {"$t9", false, false, NULL, 0}
+    {"$t0", false, false, NULL},
+    {"$t1", false, false, NULL},
+    {"$t2", false, false, NULL},
+    {"$t3", false, false, NULL},
+    {"$t4", false, false, NULL},
+    {"$t5", false, false, NULL},
+    {"$t6", false, false, NULL},
+    {"$t7", false, false, NULL},
+    {"$t8", false, false, NULL},
+    {"$t9", false, false, NULL}
 };
+
 
 // List to track variable declarations dynamically
 VarList* declaredVariables = NULL;
@@ -210,25 +211,37 @@ void generateMIPS(TAC* tacInstructions) {
                 deallocateRegister(regResult);
             }
         }
-        // Handle write operation (write x)
         else if (strcmp(current->op, "write") == 0) {
             fprintf(outputFile, "\tli $v0, 1\n");  // Load syscall code for print integer
-            if (!isImmediate(current->result)) {
-                int regResult = getRegisterForVariable(current->result);
-                if (regResult == -1) {
-                    regResult = allocateRegisterForVariable(current->result);
-                    if (regResult == -1) {
-                        fprintf(stderr, "Register allocation failed\n");
+            // Handle immediate value or variable
+            if (!isImmediate(current->arg1)) {
+                int regArg1 = getRegisterForVariable(current->arg1);
+                if (regArg1 == -1) {
+                    regArg1 = allocateRegisterForVariable(current->arg1);
+                    if (regArg1 == -1) {
+                        fprintf(stderr, "Register allocation failed for write\n");
                         return;
                     }
-                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regResult].name, VAR_PREFIX, current->result);
+                    // Load variable from memory into a register
+                    fprintf(outputFile, "\tlw %s, %s%s\n", tempRegisters[regArg1].name, VAR_PREFIX, current->arg1);
                 }
-                fprintf(outputFile, "\tmove $a0, %s\n", tempRegisters[regResult].name);
+                // Move the value to $a0 for the syscall
+                fprintf(outputFile, "\tmove $a0, %s\n", tempRegisters[regArg1].name);
             } else {
-                fprintf(outputFile, "\tli $a0, %s\n", current->result);  // Load immediate value directly
+                // If it's an immediate value, load it directly into $a0
+                fprintf(outputFile, "\tli $a0, %s\n", current->arg1);  // Use arg1, not result
             }
+            
+            // Print the integer
             fprintf(outputFile, "\tsyscall\n");
+
+            // Add newline character
+            fprintf(outputFile, "\tli $v0, 11\n");  // Syscall for print character
+            fprintf(outputFile, "\tli $a0, 10\n");  // Newline character (ASCII 10)
+            fprintf(outputFile, "\tsyscall\n");     // Print the newline
         }
+
+
 
         // Deallocate temporary variables
         if (isTemporaryVariable(current->result)) {

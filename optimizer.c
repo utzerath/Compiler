@@ -5,6 +5,69 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Function to perform dead code elimination
+bool deadCodeElimination(TAC** head) {
+    bool changed = false;
+    TAC* current = *head;
+    TAC* prev = NULL;
+
+    while (current != NULL) {
+        // Only consider assignments (op == "=") with a valid result
+        if (current->op != NULL && strcmp(current->op, "=") == 0 && current->result != NULL) {
+            // Check if the variable is used later in the code
+            if (!isUsedLater(current->next, current->result)) {
+                // Variable is not used; remove this TAC node
+                printf("Dead Code Elimination: Removing dead assignment to '%s'\n", current->result);
+                changed = true;
+                if (prev == NULL) {
+                    // Removing the head node
+                    *head = current->next;
+                } else {
+                    prev->next = current->next;
+                }
+                // Free the current node
+                free(current->result);
+                free(current->arg1);
+                free(current->op);
+                free(current->arg2);
+                TAC* temp = current;
+                current = current->next;
+                free(temp);
+                continue; // Skip advancing prev
+            }
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    return changed;
+}
+
+// Updated helper function
+bool isUsedLater(TAC* head, const char* varName) {
+    while (head != NULL) {
+        // Check if variable is assigned to again (redefined)
+        if (head->op != NULL && strcmp(head->op, "=") == 0 &&
+            head->result != NULL && strcmp(head->result, varName) == 0) {
+            // Variable is redefined before being used; previous value is dead
+            return false;
+        }
+
+        // Check if variable is used
+        if ((head->arg1 != NULL && strcmp(head->arg1, varName) == 0) ||
+            (head->arg2 != NULL && strcmp(head->arg2, varName) == 0) ||
+            (head->op != NULL && strcmp(head->op, "write") == 0 &&
+             head->arg1 != NULL && strcmp(head->arg1, varName) == 0)) {
+            // Variable is used before being redefined
+            return true;
+        }
+
+        head = head->next;
+    }
+    return false;
+}
+
+
 void safeStrReplace(char** target, const char* source) {
     if (source != NULL) {
         char* newStr = strdup(source);
@@ -58,7 +121,7 @@ bool constantPropagation(TAC** head) {
     TAC* current = *head;
     bool changed = false;
 
-    // Map to keep track of variable values
+    // Define a structure for variable mappings
     typedef struct VarValue {
         char* varName;
         char* value;
@@ -68,32 +131,27 @@ bool constantPropagation(TAC** head) {
     VarValue* varTable = NULL;
 
     while (current != NULL) {
-        // Skip write statements entirely
+        // Skip 'write' operations entirely
         if (current->op != NULL && strcmp(current->op, "write") == 0) {
             current = current->next;
             continue;
         }
+
         // Debug: Print TAC info before processing
-        printf("Propagating TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
+        printf("Processing TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
                current->result ? current->result : "NULL",
                current->arg1 ? current->arg1 : "NULL",
                current->op ? current->op : "NULL",
                current->arg2 ? current->arg2 : "NULL");
 
-        // If the operation is '=', and arg1 is a constant
-        if (current->op != NULL && strcmp(current->op, "=") == 0 && isConstant(current->arg1)) {
-            // Store the variable and its constant value
-            VarValue* newVar = malloc(sizeof(VarValue));
-            newVar->varName = strdup(current->result);
-            newVar->value = strdup(current->arg1);
-            newVar->next = varTable;
-            varTable = newVar;
-        } else {
-            // Replace arg1 if it's a variable with a known constant value
+        // If the operation is '=', handle assignments
+        if (current->op != NULL && strcmp(current->op, "=") == 0) {
+            // Attempt to replace arg1 if it's a variable with a known constant value
             if (current->arg1 != NULL && !isConstant(current->arg1)) {
                 VarValue* var = varTable;
                 while (var != NULL) {
                     if (strcmp(current->arg1, var->varName) == 0) {
+                        printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
                         safeStrReplace(&current->arg1, var->value);
                         changed = true;
                         break;
@@ -101,11 +159,92 @@ bool constantPropagation(TAC** head) {
                     var = var->next;
                 }
             }
+
+            // Now, check if arg1 is a constant after substitution
+            if (isConstant(current->arg1)) {
+                // Handle assignment to a constant
+                if (current->result != NULL && strlen(current->result) > 0) {
+                    // Update or add the mapping
+                    VarValue* var = varTable;
+                    bool found = false;
+                    while (var != NULL) {
+                        if (strcmp(var->varName, current->result) == 0) {
+                            // Update existing entry
+                            free(var->value);
+                            var->value = strdup(current->arg1);
+                            if (var->value == NULL) {
+                                perror("Failed to duplicate string in varTable");
+                                exit(EXIT_FAILURE);
+                            }
+                            found = true;
+                            printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                            break;
+                        }
+                        var = var->next;
+                    }
+                    if (!found) {
+                        // Add new entry to varTable
+                        VarValue* newVar = malloc(sizeof(VarValue));
+                        if (newVar == NULL) {
+                            perror("Failed to allocate memory for VarValue");
+                            exit(EXIT_FAILURE);
+                        }
+                        newVar->varName = strdup(current->result);
+                        newVar->value = strdup(current->arg1);
+                        if (newVar->varName == NULL || newVar->value == NULL) {
+                            perror("Failed to duplicate string for new VarValue");
+                            exit(EXIT_FAILURE);
+                        }
+                        newVar->next = varTable;
+                        varTable = newVar;
+                        printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
+                    }
+                } else {
+                    // Invalid result, skip mapping
+                    printf("Skipping mapping for instruction with invalid result.\n");
+                }
+            } else {
+                // Handle assignment to a non-constant (invalidate any existing mapping)
+                if (current->result != NULL && strlen(current->result) > 0) {
+                    // Remove existing mapping if any
+                    VarValue** indirect = &varTable;
+                    while (*indirect) {
+                        if (strcmp((*indirect)->varName, current->result) == 0) {
+                            VarValue* temp = *indirect;
+                            *indirect = (*indirect)->next;
+                            free(temp->varName);
+                            free(temp->value);
+                            free(temp);
+                            printf("Removed mapping for variable: %s (assigned non-constant)\n", current->result);
+                            break;
+                        }
+                        indirect = &(*indirect)->next;
+                    }
+                }
+            }
+        } else {
+            // For operations other than '=', attempt to replace arg1 and arg2 with constants if possible
+
+            // Replace arg1 if it's a variable with a known constant value
+            if (current->arg1 != NULL && !isConstant(current->arg1)) {
+                VarValue* var = varTable;
+                while (var != NULL) {
+                    if (strcmp(current->arg1, var->varName) == 0) {
+                        printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
+                        safeStrReplace(&current->arg1, var->value);
+                        changed = true;
+                        break;
+                    }
+                    var = var->next;
+                }
+            }
+
             // Replace arg2 if it's a variable with a known constant value
             if (current->arg2 != NULL && !isConstant(current->arg2)) {
                 VarValue* var = varTable;
                 while (var != NULL) {
                     if (strcmp(current->arg2, var->varName) == 0) {
+                        printf("Propagating constant: Replacing '%s' with '%s' in arg2\n", current->arg2, var->value);
                         safeStrReplace(&current->arg2, var->value);
                         changed = true;
                         break;
@@ -131,10 +270,12 @@ bool constantPropagation(TAC** head) {
     return changed;
 }
 
-// Main optimization loop
+
 void optimizeTAC(TAC** head) {
     bool changed;
     int passCount = 0;
+
+    printf("=== CODE OPTIMIZATION ===\n");
 
     do {
         changed = false;  // Reset flag before each pass
@@ -143,23 +284,28 @@ void optimizeTAC(TAC** head) {
 
         // Apply constant propagation
         if (constantPropagation(head)) {
-            changed = true;  // Only mark changed if constantPropagation made changes
+            changed = true;
             printf("Constant propagation applied\n");
         }
 
         // Apply constant folding (for addition only)
         if (constantFolding(head)) {
-            changed = true;  // Only mark changed if constantFolding made changes
+            changed = true;
             printf("Constant folding applied\n");
+        }
+
+        // Apply dead code elimination at the end of each pass
+        if (deadCodeElimination(head)) {
+            changed = true;
+            printf("Dead Code Elimination applied\n");
         }
 
     } while (changed);  // Repeat until no more changes are made
 
     printOptimizedTAC("TACOptimized.ir", *head);
     printf("Optimized TAC written to TACOptimized.ir\n");
-
-
 }
+
 
 // Utility function to check if a string is a valid constant
 bool isConstant(const char* str) {

@@ -38,11 +38,12 @@ bool constantFolding(TAC** head);
 bool constantPropagation(TAC** head);
 
 // Perform copy propagation (replace variables with copies of another variable's value)
-void copyPropagation(TAC** head);
+bool copyPropagation(TAC** head);
 
 // Perform dead code elimination (remove instructions whose results are not used)
-void deadCodeElimination(TAC** head);
-
+bool deadCodeElimination(TAC** head);
+bool isUsedLater(TAC* head, const char* varName);
+void safeStrReplace(char** target, const char* source);
 // Utility function to print the optimized TAC to a file
 void printOptimizedTAC(const char* filename, TAC* head);
 

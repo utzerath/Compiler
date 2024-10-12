@@ -40,30 +40,38 @@
       know about them.  */
    enum yytokentype {
      TYPE = 258,
-     ID = 259,
-     SEMICOLON = 260,
-     EQ = 261,
-     PLUS = 262,
-     MULTIPLY = 263,
-     DIVIDE = 264,
-     NUMBER = 265,
-     WRITE = 266,
-     OPEN_BRACE = 267,
-     CLOSE_BRACE = 268
+     NUMBER = 259,
+     FLOAT_LITERAL = 260,
+     SEMICOLON = 261,
+     EQ = 262,
+     PLUS = 263,
+     MINUS = 264,
+     MULTIPLY = 265,
+     DIVIDE = 266,
+     WRITE = 267,
+     OPEN_BRACE = 268,
+     CLOSE_BRACE = 269,
+     OPEN_PAREN = 270,
+     CLOSE_PAREN = 271,
+     ID = 272
    };
 #endif
 /* Tokens.  */
 #define TYPE 258
-#define ID 259
-#define SEMICOLON 260
-#define EQ 261
-#define PLUS 262
-#define MULTIPLY 263
-#define DIVIDE 264
-#define NUMBER 265
-#define WRITE 266
-#define OPEN_BRACE 267
-#define CLOSE_BRACE 268
+#define NUMBER 259
+#define FLOAT_LITERAL 260
+#define SEMICOLON 261
+#define EQ 262
+#define PLUS 263
+#define MINUS 264
+#define MULTIPLY 265
+#define DIVIDE 266
+#define WRITE 267
+#define OPEN_BRACE 268
+#define CLOSE_BRACE 269
+#define OPEN_PAREN 270
+#define CLOSE_PAREN 271
+#define ID 272
 
 
 
@@ -73,13 +81,14 @@ typedef union YYSTYPE
 #line 27 "parser.y"
 {
 	int number;
-	char character;
+	float float_number;  // Add float support
+	char character;      // BinOp returns a char
 	char* string;
 	char* operator;
 	struct ASTNode* ast;
 }
 /* Line 1529 of yacc.c.  */
-#line 83 "parser.tab.h"
+#line 92 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

@@ -16,7 +16,9 @@ void traverseAST(ASTNode* node, int level) {
         return;
     }
 
-    printIndent(level);
+    for (int i = 0; i < level; i++) {
+        printf("--");
+    }
 
     switch (node->type) {
         case NodeType_Program:
@@ -26,16 +28,18 @@ void traverseAST(ASTNode* node, int level) {
             break;
         case NodeType_VarDeclList:
             printf("VarDeclList\n");
-            traverseAST(node->varDeclList.varDecl, level + 1);  // Traverse current VarDecl
-            if (node->varDeclList.varDeclList != NULL) {
-                traverseAST(node->varDeclList.varDeclList, level + 1);  // Traverse next VarDeclList
-            }
+            traverseAST(node->varDeclList.varDecl, level + 1);
+            traverseAST(node->varDeclList.varDeclList, level + 1);
             break;
         case NodeType_VarDecl:
             printf("VarDecl: %s %s\n", node->varDecl.varType, node->varDecl.varName);
             break;
         case NodeType_SimpleExpr:
-            printf("%d\n", node->simpleExpr.number);
+            if (node->simpleExpr.valueType == 'i') {
+                printf("Int: %d\n", node->simpleExpr.intValue);
+            } else if (node->simpleExpr.valueType == 'f') {
+                printf("Float: %f\n", node->simpleExpr.floatValue);
+            }
             break;
         case NodeType_SimpleID:
             printf("%s\n", node->simpleID.name);
@@ -45,26 +49,9 @@ void traverseAST(ASTNode* node, int level) {
             traverseAST(node->expr.left, level + 1);
             traverseAST(node->expr.right, level + 1);
             break;
-        case NodeType_StmtList:
-            printf("StmtList\n");
-            traverseAST(node->stmtList.stmt, level + 1);
-            traverseAST(node->stmtList.stmtList, level + 1);
-            break;
-        case NodeType_AssignStmt:
-            printf("Stmt: %s = \n", node->assignStmt.varName);
-            traverseAST(node->assignStmt.expr, level + 1);
-            break;
-        case NodeType_BinOp:
-            printf("BinOp: %c\n", node->binOp.operator);
-            traverseAST(node->binOp.left, level + 1);
-            traverseAST(node->binOp.right, level + 1);
-            break;
-        case NodeType_WriteStmt:
-            printf("WriteStmt: write expression\n");
-            traverseAST(node->writeStmt.expr, level + 1);  // Traverse the expression being written
-            break;
+        // Add cases for other node types as needed
         default:
-            printf("Unknown node type: %d\n", node->type);  // Add more specific debugging
+            printf("Unknown node type\n");
             break;
     }
 }
@@ -83,14 +70,12 @@ void freeAST(ASTNode* node) {
             freeAST(node->varDeclList.varDeclList);
             break;
         case NodeType_VarDecl:
-            free(node->varDecl.varType);  // Only free if dynamically allocated
-            free(node->varDecl.varName);  // Only free if dynamically allocated
+            free(node->varDecl.varType);
+            free(node->varDecl.varName);
             break;
         case NodeType_SimpleExpr:
-            // No dynamic memory to free in simple expression
             break;
         case NodeType_SimpleID:
-            // Free the identifier name if dynamically allocated
             free(node->simpleID.name);
             break;
         case NodeType_Expr:
@@ -102,15 +87,15 @@ void freeAST(ASTNode* node) {
             freeAST(node->stmtList.stmtList);
             break;
         case NodeType_AssignStmt:
-            free(node->assignStmt.varName);  // Only free if dynamically allocated
-            free(node->assignStmt.expr);
+            free(node->assignStmt.varName);
+            freeAST(node->assignStmt.expr);
             break;
         case NodeType_BinOp:
             freeAST(node->binOp.left);
             freeAST(node->binOp.right);
             break;
         case NodeType_WriteStmt:
-            freeAST(node->writeStmt.expr);  // Free the expression, not just the varName
+            freeAST(node->writeStmt.expr);
             break;
         default:
             break;
@@ -121,7 +106,7 @@ void freeAST(ASTNode* node) {
 ASTNode* createNode(NodeType type) {
     ASTNode* newNode = (ASTNode*)malloc(sizeof(ASTNode));
     if (newNode == NULL) {
-        return NULL;  // Handle memory allocation failure
+        return NULL;
     }
 
     newNode->type = type;
@@ -140,13 +125,15 @@ ASTNode* createNode(NodeType type) {
             newNode->varDecl.varName = NULL;
             break;
         case NodeType_SimpleExpr:
-            newNode->simpleExpr.number = 0;
+            newNode->simpleExpr.intValue = 0;   // Initialize both int and float
+            newNode->simpleExpr.floatValue = 0.0;
+            newNode->simpleExpr.valueType = 'i';  // Default to int
             break;
         case NodeType_SimpleID:
             newNode->simpleID.name = NULL;
             break;
         case NodeType_Expr:
-            newNode->expr.operator = '\0';  // Placeholder value
+            newNode->expr.operator = '\0';
             newNode->expr.left = NULL;
             newNode->expr.right = NULL;
             break;
@@ -155,12 +142,11 @@ ASTNode* createNode(NodeType type) {
             newNode->stmtList.stmtList = NULL;
             break;
         case NodeType_AssignStmt:
-            newNode->assignStmt.operator = NULL;
             newNode->assignStmt.varName = NULL;
             newNode->assignStmt.expr = NULL;
             break;
         case NodeType_BinOp:
-            newNode->binOp.operator = '\0';  // Placeholder value
+            newNode->binOp.operator = '\0';
             newNode->binOp.left = NULL;
             newNode->binOp.right = NULL;
             break;
@@ -173,4 +159,26 @@ ASTNode* createNode(NodeType type) {
     }
 
     return newNode;
+}
+
+ASTNode* createIntNode(int value) {
+    ASTNode* node = createNode(NodeType_SimpleExpr);
+    if (node == NULL) {
+        fprintf(stderr, "Memory allocation failed for ASTNode\n");
+        exit(1);
+    }
+    node->simpleExpr.intValue = value;
+    node->simpleExpr.valueType = 'i';  // Mark this node as holding an int
+    return node;
+}
+
+ASTNode* createFloatNode(float value) {
+    ASTNode* node = createNode(NodeType_SimpleExpr);
+    if (node == NULL) {
+        fprintf(stderr, "Memory allocation failed for ASTNode\n");
+        exit(1);
+    }
+    node->simpleExpr.floatValue = value;
+    node->simpleExpr.valueType = 'f';  // Mark this node as holding a float
+    return node;
 }

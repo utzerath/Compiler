@@ -295,7 +295,7 @@ int allocateRegister() {
         }
     }
     // All registers are in use; need to spill one
-    int regToSpill = pickRegisterToSpill();
+    int regToSpill = pickRegisterToSpill(); 
     spillRegister(regToSpill);
     return regToSpill;
 }

@@ -1,8 +1,7 @@
 all: parser
 
 parser.tab.c parser.tab.h:	parser.y
-	bison -t -v -d --graph parser.y 
-	dot -Tpdf parser.gv -o parse.pdf
+	bison -t -v -d parser.y 
 
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l

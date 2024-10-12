@@ -26,94 +26,83 @@ Symbol* symbol = NULL;
 
 %union {
 	int number;
-	char character;
+	float float_number;  // Add float support
+	char character;      // BinOp returns a char
 	char* string;
 	char* operator;
 	struct ASTNode* ast;
 }
 
 %token <string> TYPE
-%token <string> ID
+%token <number> NUMBER
+%token <float_number> FLOAT_LITERAL  // Add float literal token
 %token <char> SEMICOLON
 %token <operator> EQ
 %token <operator> PLUS
+%token <operator> MINUS
 %token <operator> MULTIPLY
 %token <operator> DIVIDE
-%token <number> NUMBER
 %token <string> WRITE
 %token <char> OPEN_BRACE CLOSE_BRACE
+%token <char> OPEN_PAREN CLOSE_PAREN
+%token <string> ID
 
+%type <ast> Program VarDecl VarDeclList Stmt StmtList Expr
+%type <character> BinOp  // Declare BinOp to return a char
 
-%printer { fprintf(yyoutput, "%s", $$); } ID;
-
-%type <ast> Program VarDecl VarDeclList Stmt StmtList Expr BinOp
 %start Program
+
+%left PLUS MINUS
+%left MULTIPLY DIVIDE
+%nonassoc OPEN_PAREN CLOSE_PAREN
 
 %%
 
-Program: VarDeclList StmtList    { printf("The PARSER has started\n"); 
+Program: VarDeclList StmtList    { 
+									printf("The PARSER has started\n"); 
 									root = malloc(sizeof(ASTNode));
 									root->type = NodeType_Program;
 									root->program.varDeclList = $1;
 									root->program.stmtList = $2;
-									// Set other fields as necessary
 								}
-
 ;
 
 VarDeclList: /* empty */ {
-    $$ = NULL;  // Properly terminate the list with NULL
+    $$ = NULL;
 }
 | VarDecl VarDeclList {
-    $$ = malloc(sizeof(ASTNode));  // Allocate memory for VarDeclList node
-    $$->type = NodeType_VarDeclList;  // Set node type to VarDeclList
-    $$->varDeclList.varDecl = $1;  // Store the current VarDecl
-    $$->varDeclList.varDeclList = $2;  // Link to the next VarDeclList (or NULL if end)
+    $$ = malloc(sizeof(ASTNode));  
+    $$->type = NodeType_VarDeclList;  
+    $$->varDeclList.varDecl = $1;  
+    $$->varDeclList.varDeclList = $2;
 }
 ;
 
-
-VarDecl: TYPE ID SEMICOLON { printf("PARSER: Recognized variable declaration: %s\n", $2);
-
-								printf("PARSER: Printing symbol table\n");
-								printSymbolTable(symTab);
-
-								printf("PARSER: Checking if variable has already been declared\n");
-
-								// Check if variable has already been declared
-								
+VarDecl: TYPE ID SEMICOLON { 
+								printf("PARSER: Recognized variable declaration: %s\n", $2);
 								symbol = lookupSymbol(symTab, $2);
 							
-								if (symbol != NULL) {	// Check if variable has already been declared
+								if (symbol != NULL) {
 									printf("PARSER: Variable %s at line %d has already been declared - COMPILATION HALTED\n", $2, yylineno);
 									exit(0);
 								} else {	
-										// Variable has not been declared yet	
-										// Create AST node for VarDecl
-
 										$$ = malloc(sizeof(ASTNode));
 										$$->type = NodeType_VarDecl;
-										$$->varDecl.varType = strdup($1);
+										$$->varDecl.varType = strdup($1);  // Can be "int" or "float"
 										$$->varDecl.varName = strdup($2);
-										// Set other fields as necessary
-
-										// Add variable to symbol table
-										addSymbol(symTab, $2, $1);
-										printSymbolTable(symTab);
+										addSymbol(symTab, $2, $1);  // Add symbol to symbol table
 									}
-								
 							 }
 		| TYPE ID {
                   printf ("Missing semicolon after declaring variable: %s\n", $2);
              }
 
-StmtList:  {/*empty, i.e. it is possible not to have any statement*/} 
+StmtList:  {/*empty*/} 
 	| Stmt StmtList { printf("PARSER: Recognized statement list\n");
 						$$ = malloc(sizeof(ASTNode));
 						$$->type = NodeType_StmtList;
 						$$->stmtList.stmt = $1;
 						$$->stmtList.stmtList = $2;
-						// Set other fields as necessary
 					}
 ;
 
@@ -121,107 +110,80 @@ Stmt: ID EQ Expr SEMICOLON {
        printf("PARSER: Recognized assignment statement\n");
        $$ = malloc(sizeof(ASTNode));
        $$->type = NodeType_AssignStmt;
-       $$->assignStmt.varName = strdup($1);  // Store the variable name
-       $$->assignStmt.operator = $2;         // Store the assignment operator (if needed)
-       $$->assignStmt.expr = $3;             // Link the expression subtree
+       $$->assignStmt.varName = strdup($1);
+       $$->assignStmt.expr = $3;  // No operator for assignment
      }
-   | WRITE Expr SEMICOLON {  // Handle writing an expression (instead of just an ID)
+   | WRITE Expr SEMICOLON { 
        printf("PARSER: Recognized write statement\n");
        $$ = malloc(sizeof(ASTNode));
        $$->type = NodeType_WriteStmt;
-       $$->writeStmt.expr = $2;              // Store the expression being written
+       $$->writeStmt.expr = $2;
      }
-   | OPEN_BRACE StmtList CLOSE_BRACE {  // Handle block of statements
+   | OPEN_BRACE StmtList CLOSE_BRACE {
        printf("PARSER: Recognized a block statement\n");
        $$ = malloc(sizeof(ASTNode));
        $$->type = NodeType_BlockStmt;
-       $$->blockStmt.stmtList = $2;          // Link to the statement list
+       $$->blockStmt.stmtList = $2;
      }
 ;
 
-
-
-Expr: Expr BinOp Expr { printf("PARSER: Recognized expression\n");
-						$$ = malloc(sizeof(ASTNode));
-						$$->type = NodeType_Expr;
-						$$->expr.left = $1;
-						$$->expr.right = $3;
-						$$->expr.operator = $2->binOp.operator;
-						// Set other fields as necessary
-					  }
- 					
-	| ID { printf("ASSIGNMENT statement \n"); 
-			$$ = malloc(sizeof(ASTNode));
-			$$->type = NodeType_SimpleID;
-			$$->simpleID.name = $1;
-			// Set other fields as necessary	
-		}
-	| NUMBER { 
-				printf("PARSER: Recognized number\n");
-				$$ = malloc(sizeof(ASTNode));
-				$$->type = NodeType_SimpleExpr;
-				$$->simpleExpr.number = $1;
-				// Set other fields as necessary
-			 }
+Expr: Expr BinOp Expr  { 
+            printf("PARSER: Recognized binary expression\n");
+            $$ = malloc(sizeof(ASTNode));
+            $$->type = NodeType_Expr;
+            $$->expr.left = $1;
+            $$->expr.right = $3;
+            $$->expr.operator = $2;  // Use operator directly from BinOp
+        }
+    | NUMBER { 
+            printf("PARSER: Recognized integer\n");
+            $$ = createIntNode($1);  // Create a node for integer value
+        }
+    | FLOAT_LITERAL { 
+            printf("PARSER: Recognized float\n");
+            $$ = createFloatNode($1);  // Create a node for float value
+        }
+    | ID { 
+            printf("PARSER: Recognized identifier\n");
+            $$ = malloc(sizeof(ASTNode));
+            $$->type = NodeType_SimpleID;
+            $$->simpleID.name = $1;
+        }
+    | OPEN_PAREN Expr CLOSE_PAREN {
+            printf("PARSER: Recognized parenthesized expression\n");
+            $$ = $2;  // Just return the expression inside parentheses
+        }
 ;
 
-BinOp: PLUS {
-				printf("PARSER: Recognized binary operator\n");
-				$$ = malloc(sizeof(ASTNode));
-				$$->type = NodeType_BinOp;
-				$$->binOp.operator = *$1;
-				// Set other fields as necessary
-            }
-      | MULTIPLY {
-				printf("PARSER: Recognized multiplication operator\n");
-				$$ = malloc(sizeof(ASTNode));
-				$$->type = NodeType_BinOp;
-				$$->binOp.operator = *$1;
-				// Set other fields as necessary
-            }
-      | DIVIDE {
-				printf("PARSER: Recognized division operator\n");
-				$$ = malloc(sizeof(ASTNode));
-				$$->type = NodeType_BinOp;
-				$$->binOp.operator = *$1;
-				// Set other fields as necessary
-            }
+BinOp: PLUS   { $$ = '+'; }
+     | MINUS  { $$ = '-'; }
+     | MULTIPLY { $$ = '*'; }
+     | DIVIDE  { $$ = '/'; }
 ;
 
 %%
 
 int main() {
-    // Initialize file or input source
     yyin = fopen("testProg.cmm", "r");
 
-	// Initialize symbol table
 	symTab = createSymbolTable(TABLE_SIZE);
     if (symTab == NULL) {
-        // Handle error
         return EXIT_FAILURE;
     }
 	symbol = malloc(sizeof(Symbol));
 	initializeTempVars();
 
-    // Start parsing
     if (yyparse() == 0) {
-        // Successfully parsed
-		printf("Parsing successful!\n");
+        printf("Parsing successful!\n");
         traverseAST(root, 0);
-		// Print symbol table for debugging
 		printSymbolTable(symTab);
-		// Semantic analysis
 		printf("\n=== SEMANTIC ANALYSIS ===\n\n");
 		semanticAnalysis(root, symTab);
 		printf("\n=== TAC GENERATION ===\n");
 		printTACToFile("TAC.ir", tacHead);
-
-		// Code optimization
 		printf("\n=== CODE OPTIMIZATION ===\n");
 		optimizeTAC(&tacHead);
 		printOptimizedTAC("TACOptimized.ir", tacHead);
-
-		// Code generation
 		printf("\n=== CODE GENERATION ===\n");
 		initCodeGenerator("output.s");
 		generateMIPS(tacHead);
@@ -238,6 +200,10 @@ int main() {
 }
 
 void yyerror(const char* s) {
-	fprintf(stderr, "Parse error: %s\n", s);
-	exit(1);
+	// Enhanced error message with line number and a suggestion for missing semicolons
+    if (strstr(s, "syntax error")) {
+        fprintf(stderr, "Syntax error: %s at line %d. Did you forget a semicolon or a closing brace?\n", s, yylineno);
+    } else {
+        fprintf(stderr, "Error: %s at line %d\n", s, yylineno);
+    }
 }

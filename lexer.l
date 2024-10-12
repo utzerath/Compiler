@@ -17,7 +17,8 @@ letter      [a-zA-Z]
 digit       [0-9]
 ID          {letter}({letter}|{digit})*
 delim       [ \t\n]
-NUMBER      {digit}+(\.{digit}+)?(E[+\-]?(digit)+)?
+INT         {digit}+
+FLOAT       ({digit}+"."{digit}*([eE][+-]?{digit}+)?)
 ws          {delim}+
 
 %option yylineno
@@ -33,8 +34,14 @@ ws          {delim}+
 								}
 							}
 						}
-						
+
 "int"	{words++; chars += strlen(yytext);
+			printf("%s : TYPE\n", yytext);
+			yylval.string = strdup(yytext); 
+			return TYPE;
+		}
+
+"float"	{words++; chars += strlen(yytext);
 			printf("%s : TYPE\n", yytext);
 			yylval.string = strdup(yytext); 
 			return TYPE;
@@ -51,13 +58,19 @@ ws          {delim}+
 			  yylval.string = strdup(yytext); 
 			  return ID;
 			}
-			
-{NUMBER}		{words++; chars += strlen(yytext);
-			  printf("%s : NUMBER\n",yytext);
-			  yylval.number = atoi(strdup(yytext)); 
-			  return NUMBER;
+
+{FLOAT}		{words++; chars += strlen(yytext);
+			  printf("%s : FLOAT_LITERAL\n",yytext);
+			  yylval.float_number = atof(yytext); // Convert to float
+			  return FLOAT_LITERAL;
 			}
 			
+{INT}		{words++; chars += strlen(yytext);
+			  printf("%s : NUMBER\n",yytext);
+			  yylval.number = atoi(yytext); // Convert to int
+			  return NUMBER;
+			}
+
 ";"		{chars++;
 		  printf("%s : SEMICOLON\n", yytext);
 		  yylval.string = strdup(yytext); 
@@ -88,6 +101,18 @@ ws          {delim}+
 		  yylval.operator = strdup(yytext); 
 		  return DIVIDE;
 		}
+		
+"("     {chars++;
+         printf("%s : OPEN_PAREN\n", yytext);
+         yylval.string = strdup(yytext);
+         return OPEN_PAREN;
+        }
+
+")"     {chars++;
+         printf("%s : CLOSE_PAREN\n", yytext);
+         yylval.string = strdup(yytext);
+         return CLOSE_PAREN;
+        }
 
 "{"		{chars++;
 		  printf("%s : OPEN_BRACE\n", yytext);

@@ -1,35 +1,36 @@
 #ifndef AST_H
 #define AST_H
 
-// Include standard libraries as needed, e.g., stdlib 
-// for memory management functions
 #include <stdlib.h>
 #include <stdio.h>
 
 // NodeType enum to differentiate between different 
 // kinds of AST nodes
-typedef enum { 
+typedef enum {
     NodeType_Program,
-    NodeType_VarDeclList, 
-    NodeType_VarDecl, 
+    NodeType_VarDeclList,
+    NodeType_VarDecl,
     NodeType_SimpleExpr,
     NodeType_SimpleID,
-    NodeType_Expr, 
+    NodeType_Expr,
     NodeType_StmtList,
     NodeType_AssignStmt,
-    NodeType_BinOp, 
-    NodeType_BlockStmt,    // Added to represent a block of statements
-    NodeType_WriteStmt
+    NodeType_BinOp,
+    NodeType_WriteStmt,
+    NodeType_BlockStmt
 } NodeType;
 
-// Structure for AST nodes
+
 typedef struct ASTNode {
     NodeType type;
     union {
         struct {
-            struct ASTNode* varDeclList;
-            struct ASTNode* stmtList;
-        } program;
+            struct ASTNode* stmtList;  // Block holds a list of statements
+        } blockStmt;
+        struct {
+            char* varType;  // "int" or "float"
+            char* varName;
+        } varDecl;
 
         struct {
             struct ASTNode* varDecl;
@@ -37,12 +38,9 @@ typedef struct ASTNode {
         } varDeclList;
 
         struct {
-            char* varType;
-            char* varName;
-        } varDecl;
-
-        struct {
-            int number;
+            int intValue;      // For integer constants
+            float floatValue;  // For float constants
+            char valueType;    // 'i' for int, 'f' for float
         } simpleExpr;
 
         struct {
@@ -50,42 +48,44 @@ typedef struct ASTNode {
         } simpleID;
 
         struct {
-            // Expression-specific fields
-            char operator;  // Example for an operator field
-            struct ASTNode* left;  // Left operand
-            struct ASTNode* right; // Right operand
+            struct ASTNode* left;
+            struct ASTNode* right;
+            char operator;
         } expr;
 
         struct {
-            // StatementList-specific fields
             struct ASTNode* stmt;
-            struct ASTNode* stmtList; 
-            // Example for linking statements in a list
+            struct ASTNode* stmtList;
         } stmtList;
 
         struct {
-            char* operator; // e.g., '='
             char* varName;
             struct ASTNode* expr;
         } assignStmt;
 
         struct {
-            char operator;
             struct ASTNode* left;
             struct ASTNode* right;
+            char operator;
         } binOp;
+
         struct {
-            char* varName;  // <-- Add this field for write statement
-            struct ASTNode* expr;      // Expression to write, if applicable
-        } writeStmt; 
+            struct ASTNode* expr;
+        } writeStmt;
+
         struct {
-            struct ASTNode* stmtList; // Pointer to the list of statements inside the block
-        } blockStmt;  // Added blockStmt for handling blocks of code
+            struct ASTNode* varDeclList;
+            struct ASTNode* stmtList;
+        } program;
+
     };
 } ASTNode;
 
+
 // Function prototypes for AST handling
 ASTNode* createNode(NodeType type);
+ASTNode* createIntNode(int value);         // Create a node for integer values
+ASTNode* createFloatNode(float value);     // Create a node for float values
 void freeAST(ASTNode* node);
 void traverseAST(ASTNode* node, int level);
 

@@ -1,5 +1,15 @@
 #include "semantic.h"
 #include <stdio.h>
+#include <stdbool.h>
+
+int tempVars[20]; // Array for tracking temp variables
+static int tempVarCounter = 0;
+
+char* createTempVar() {
+    char* tempVar = (char*)malloc(10);
+    snprintf(tempVar, 10, "t%d", tempVarCounter++);  // Create a temp variable name like t1, t2, etc.
+    return tempVar;
+}
 
 // Perform semantic analysis on the AST
 TAC* tacHead = NULL;
@@ -49,7 +59,6 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
         }
 
-        
         case NodeType_StmtList:
             semanticAnalysis(node->stmtList.stmt, symTab);
             semanticAnalysis(node->stmtList.stmtList, symTab);
@@ -99,6 +108,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
         
         case NodeType_SimpleExpr:
+            // No need to check here, handled in expression generation
             break;
 
         case NodeType_BlockStmt:
@@ -110,24 +120,13 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
     }
 
+    // Generate TAC for expressions
     if (node->type == NodeType_Expr || node->type == NodeType_SimpleExpr) {
         TAC* tac = generateTACForExpr(node);
         printTAC(tac);
     }
 }
-
-
-
-
-// You can add more functions related to semantic analysis here
-// Implement functions to generate TAC expressions
-
-
-
 TAC* generateTACForExpr(ASTNode* expr) {
-    // Depending on your AST structure, generate the appropriate TAC
-    // If the TAC is generated successfully, append it to the global TAC list
-    // Return the generated TAC, so that it can be used by the caller, e.g. for printing
     if (!expr) return NULL;
 
     TAC* instruction = (TAC*)malloc(sizeof(TAC));
@@ -136,25 +135,75 @@ TAC* generateTACForExpr(ASTNode* expr) {
     switch (expr->type) {
         case NodeType_Expr: {
             printf("Generating TAC for expression\n");
-            instruction->arg1 = createOperand(expr->expr.left);
-            instruction->arg2 = createOperand(expr->expr.right);
-    
-            // Capture the operator from the AST node
-            char operatorStr[2] = { expr->expr.operator, '\0' }; // Make it a string
-            instruction->op = strdup(operatorStr);
-            instruction->result = createTempVar();
-            break;
+
+            // Get left and right operands
+            char* leftOperand = createOperand(expr->expr.left);
+            char* rightOperand = createOperand(expr->expr.right);
+
+            // Determine if mixed types (int and float) and handle accordingly
+            bool isLeftFloat = (expr->expr.left->type == NodeType_SimpleExpr && 
+                                expr->expr.left->simpleExpr.valueType == 'f');
+            bool isRightFloat = (expr->expr.right->type == NodeType_SimpleExpr && 
+                                 expr->expr.right->simpleExpr.valueType == 'f');
+
+            // Handle different operations based on the operator type
+            switch (expr->expr.operator) {  // Fix here
+                case '+':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("add.s");  // Float addition
+                    } else {
+                        instruction->op = strdup("+");  // Integer addition
+                    }
+                    break;
+
+                case '-':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("sub.s");  // Float subtraction
+                    } else {
+                        instruction->op = strdup("-");  // Integer subtraction
+                    }
+                    break;
+
+                case '*':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("mul.s");  // Float multiplication
+                    } else {
+                        instruction->op = strdup("*");  // Integer multiplication
+                    }
+                    break;
+
+                case '/':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("div.s");  // Float division
+                    } else {
+                        instruction->op = strdup("/");  // Integer division
+                    }
+                    break;
+
+                default:
+                    fprintf(stderr, "Unsupported binary operator\n");
+                    free(instruction);
+                    return NULL;
             }
 
+            // Set arguments and the result
+            instruction->arg1 = leftOperand;
+            instruction->arg2 = rightOperand;
+            instruction->result = createTempVar();  // Create a temporary variable for the result
+            break;
+        }
 
         case NodeType_SimpleExpr: {
             printf("Generating TAC for simple expression\n");
             char buffer[20];
-            snprintf(buffer, 20, "%d", expr->simpleExpr.number);
+            if (expr->simpleExpr.valueType == 'i') {
+                snprintf(buffer, 20, "%d", expr->simpleExpr.intValue);
+            } else if (expr->simpleExpr.valueType == 'f') {
+                snprintf(buffer, 20, "%f", expr->simpleExpr.floatValue);
+            }
             instruction->arg1 = strdup(buffer);
-            instruction->op = "="; //strdup(expr->expr.operator);
-            instruction->arg2 = NULL;
-            instruction->result = createTempVar();
+            instruction->op = "=";  // Assignment operator
+            instruction->result = createTempVar();  // Create temp variable for this constant value
             break;
         }
 
@@ -162,50 +211,32 @@ TAC* generateTACForExpr(ASTNode* expr) {
             printf("Generating TAC for simple ID\n");
             instruction->arg1 = strdup(expr->simpleID.name);
             instruction->op = strdup("assign");
-            instruction->result = createTempVar();
+            instruction->result = createTempVar();  // Create a temp variable to hold the ID
             break;
         }
-        
+
         default:
             free(instruction);
             return NULL;
     }
 
-    instruction->next = NULL; // Make sure to null-terminate the new instruction
-
-    // Append to the global TAC list
-    appendTAC(&tacHead, instruction);
-
+    instruction->next = NULL;  // Null-terminate the instruction
+    appendTAC(&tacHead, instruction);  // Add instruction to the TAC list
     return instruction;
 }
-// Function to create a new temporary variable for TAC
-char* createTempVar() {
-    char* tempVar = malloc(10); // Enough space for "t" + number
-    if (!tempVar) return NULL;
-    
-    int count = allocateNextAvailableTempVar(tempVars);
-    if (count == -1) {
-        fprintf(stderr, "Error: No available temp variables\n");
-        free(tempVar);
-        return NULL;
-    }
-    
-    sprintf(tempVar, "t%d", count);
-    return tempVar;
-}
 
-
+// Updates in createOperand to handle both int and float correctly
 char* createOperand(ASTNode* node) {
-    // Depending on your AST structure, return the appropriate string
-    // representation of the operand. For example, if the operand is a simple
-    // expression or an identifier, return its string representation.
-    // This function needs to be implemented based on your AST structure.
     if (!node) return NULL;
 
     switch (node->type) {
         case NodeType_SimpleExpr: {
             char* buffer = malloc(20);
-            snprintf(buffer, 20, "%d", node->simpleExpr.number);
+            if (node->simpleExpr.valueType == 'i') {
+                snprintf(buffer, 20, "%d", node->simpleExpr.intValue);
+            } else if (node->simpleExpr.valueType == 'f') {
+                snprintf(buffer, 20, "%f", node->simpleExpr.floatValue);
+            }
             return buffer;
         }
 
@@ -222,6 +253,7 @@ char* createOperand(ASTNode* node) {
             return NULL;
     }
 }
+
 
 void printTAC(TAC* tac) {
     if (!tac) return;

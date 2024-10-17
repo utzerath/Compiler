@@ -80,35 +80,116 @@ void safeStrReplace(char** target, const char* source) {
         *target = NULL;  // Set target to NULL if source is NULL
     }
 }
-
 bool constantFolding(TAC** head) {
     TAC* current = *head;
     bool changed = false;
 
     while (current != NULL) {
-        // Debug: Print TAC info before processing
         printf("Folding TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",
                current->result ? current->result : "NULL",
                current->arg1 ? current->arg1 : "NULL",
                current->op ? current->op : "NULL",
                current->arg2 ? current->arg2 : "NULL");
 
-        if (current->op != NULL && strcmp(current->op, "+") == 0 &&
-            isConstant(current->arg1) && isConstant(current->arg2)) {
-            int left = atoi(current->arg1);
-            int right = atoi(current->arg2);
-            int result = left + right;
+        // Handle integer operations
+        if (isConstant(current->arg1) && isConstant(current->arg2)) {
+            if (strcmp(current->op, "+") == 0) {
+                int result = atoi(current->arg1) + atoi(current->arg2);
+                foldOperation(current, result);
+                changed = true;
+            }
+            else if (strcmp(current->op, "-") == 0) {
+                int result = atoi(current->arg1) - atoi(current->arg2);
+                foldOperation(current, result);
+                changed = true;
+            }
+            else if (strcmp(current->op, "*") == 0) {
+                int result = atoi(current->arg1) * atoi(current->arg2);
+                foldOperation(current, result);
+                changed = true;
+            }
+            else if (strcmp(current->op, "/") == 0) {
+                int right = atoi(current->arg2);
+                if (right != 0) {
+                    int result = atoi(current->arg1) / right;
+                    foldOperation(current, result);
+                    changed = true;
+                } else {
+                    fprintf(stderr, "Error: Division by zero encountered in constant folding.\n");
+                }
+            }
+        }
+        // Handle floating-point operations
+        else if (isFloatConstant(current->arg1) && isFloatConstant(current->arg2)) {
+            float left = atof(current->arg1);
+            float right = atof(current->arg2);
+            float result = 0;
 
-            // Replace the operation with the result
-            char resultStr[20];
-            sprintf(resultStr, "%d", result);
-            safeStrReplace(&current->arg1, resultStr);  // Replace with the result string
-            safeStrReplace(&current->op, "=");          // Properly replace 'op'
-            safeStrReplace(&current->arg2, NULL);       // Clear arg2
+            if (strcmp(current->op, "add.s") == 0) {
+                result = left + right;
+            } 
+            else if (strcmp(current->op, "sub.s") == 0) {
+                result = left - right;
+            } 
+            else if (strcmp(current->op, "mul.s") == 0) {
+                result = left * right;
+            } 
+            else if (strcmp(current->op, "div.s") == 0 && right != 0.0f) {
+                result = left / right;
+            } else {
+                fprintf(stderr, "Error: Division by zero encountered in constant folding (floats).\n");
+            }
+
+            foldFloatOperation(current, result);
             changed = true;
+        }
 
-            // Debug: Confirm folding worked
-            printf("Folding applied: %s = %d\n", current->result, result);
+        // Identity operation folding for integers
+        if (isConstant(current->arg2)) {
+            if (strcmp(current->op, "*") == 0 && strcmp(current->arg2, "1") == 0) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "+") == 0 && strcmp(current->arg2, "0") == 0) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "-") == 0 && strcmp(current->arg2, "0") == 0) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "/") == 0 && strcmp(current->arg2, "1") == 0) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+        }
+
+        // Identity operation folding for floating-point numbers
+        if (isFloatConstant(current->arg2)) {
+            if (strcmp(current->op, "mul.s") == 0 && atof(current->arg2) == 1.0f) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "add.s") == 0 && atof(current->arg2) == 0.0f) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "sub.s") == 0 && atof(current->arg2) == 0.0f) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
+            else if (strcmp(current->op, "div.s") == 0 && atof(current->arg2) == 1.0f) {
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+            }
         }
 
         current = current->next;
@@ -116,6 +197,38 @@ bool constantFolding(TAC** head) {
 
     return changed;
 }
+
+
+
+void foldOperation(TAC* current, int result) {
+    char resultStr[20];
+    sprintf(resultStr, "%d", result);
+    safeStrReplace(&current->arg1, resultStr);  // Replace with result string
+    safeStrReplace(&current->op, "=");          // Properly replace 'op'
+    safeStrReplace(&current->arg2, NULL);       // Clear arg2
+}
+
+void foldFloatOperation(TAC* current, float result) {
+    char resultStr[30];
+    snprintf(resultStr, sizeof(resultStr), "%.6f", result);  // Control precision to 6 decimal places
+    printf("Folding float: %s %s %s -> %s\n", current->arg1, current->op, current->arg2, resultStr);
+    safeStrReplace(&current->arg1, resultStr);  // Replace arg1 with result string
+    safeStrReplace(&current->op, "=");          // Replace operation with assignment
+    safeStrReplace(&current->arg2, NULL);       // Clear arg2
+}
+
+// Utility function to check if a string is a valid float constant
+bool isFloatConstant(const char* str) {
+    if (str == NULL || *str == '\0') {
+        return false;
+    }
+
+    char* endptr;
+    strtod(str, &endptr);
+    return (*endptr == '\0');  // Check if entire string is a valid float
+}
+
+
 
 bool constantPropagation(TAC** head) {
     TAC* current = *head;
@@ -158,6 +271,9 @@ bool constantPropagation(TAC** head) {
                     }
                     var = var->next;
                 }
+            }
+            else{
+                
             }
 
             // Now, check if arg1 is a constant after substitution
@@ -277,30 +393,31 @@ void optimizeTAC(TAC** head) {
 
     printf("=== CODE OPTIMIZATION ===\n");
 
-    do {
-        changed = false;  // Reset flag before each pass
-        passCount++;
-        printf("=== Optimization Pass %d ===\n", passCount);
+   do {
+    changed = false;  // Reset flag before each pass
+    printf("=== Optimization Pass %d ===\n", passCount++);
 
-        // Apply constant propagation
-        if (constantPropagation(head)) {
-            changed = true;
-            printf("Constant propagation applied\n");
-        }
+    // Apply constant propagation multiple times until no changes
+    while (constantPropagation(head)) {
+        changed = true;
+        printf("Constant propagation applied\n");
+    }
 
-        // Apply constant folding (for addition only)
-        if (constantFolding(head)) {
-            changed = true;
-            printf("Constant folding applied\n");
-        }
+    // Apply constant folding multiple times until no changes
+    while (constantFolding(head)) {
+        changed = true;
+        printf("Constant folding applied\n");
+    }
 
-        // Apply dead code elimination at the end of each pass
-        if (deadCodeElimination(head)) {
-            changed = true;
-            printf("Dead Code Elimination applied\n");
-        }
+    // Apply dead code elimination
+    if (deadCodeElimination(head)) {
+        changed = true;
+        printf("Dead Code Elimination applied\n");
+    }
 
-    } while (changed);  // Repeat until no more changes are made
+} while (changed);  // Repeat until no more changes are made
+
+
 
     printOptimizedTAC("TACOptimized.ir", *head);
     printf("Optimized TAC written to TACOptimized.ir\n");

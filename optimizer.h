@@ -52,4 +52,8 @@ void printCurrentOptimizedTAC(TAC* current);
 // In optimizer.h
 void freeTACList(TAC* head);
 
+void foldFloatOperation(TAC* current, float result);
+void foldOperation(TAC* current, int result);
+bool isFloatConstant(const char* str);
+
 #endif // OPTIMIZER_H

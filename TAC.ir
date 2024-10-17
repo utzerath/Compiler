@@ -13,9 +13,18 @@ t5 = b + t4
 t6 = a + t5 
 t7 = x + t6 
 y = t7
-t8 = x / p 
-k = t8
+t8 = x * p 
+z = t8
+t9 = a + p 
+p = t9
+t10 = x / p 
+k = t10
+t11 = 2.500000 div.s 1 
+t12 = 3 * t11 
+t13 = z + t12 
+z = t13
 write k
 write x
 write y
 write b
+write z

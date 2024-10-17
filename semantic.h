@@ -27,7 +27,6 @@ char* createOperand(ASTNode* node);                     // Create operand for TA
 void printTAC(TAC* tac);                                // Print TAC to the console
 void printTACToFile(const char* filename, TAC* tac);    // Print TAC to a file
 void semanticAnalysis(ASTNode* node, SymbolTable* symTab);
-char* promoteToFloat(char* intOperand);
  // Perform semantic analysis           // Promote an int operand to float
 
 #endif // SEMANTIC_H

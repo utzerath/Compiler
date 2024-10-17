@@ -1,18 +1,25 @@
 float x;
 float p;
+float z;
 int y;
 int a;
 int b;
 int c;
+
 c = 2;
 p = 18.75;
 x = 9.9;
 a = 12;
 b = 23 / 2;
-x = 10.5 / (2 + 2); 
+x = 10.5 / (2 + 2);
 y = x + a + b + c + a + 5;
-k = x / p; 
+z = x * p;
+p = a + p;
+k = x / p;
+z = z + 3 * (2.5 / 1);
+
 write k;
 write x;
 write y;
 write b;
+write z;

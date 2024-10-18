@@ -42,12 +42,37 @@ void traverseAST(ASTNode* node, int level) {
             }
             break;
         case NodeType_SimpleID:
-            printf("%s\n", node->simpleID.name);
+            printf("Identifier: %s\n", node->simpleID.name);
             break;
         case NodeType_Expr:
             printf("Expr: %c\n", node->expr.operator);
             traverseAST(node->expr.left, level + 1);
             traverseAST(node->expr.right, level + 1);
+            break;
+        case NodeType_ArrayDecl:
+            printf("ArrayDecl: %s %s[%d]\n", node->arrayDecl.varType, node->arrayDecl.varName, node->arrayDecl.size);
+            break;
+        case NodeType_ArrayAccess:
+            printf("ArrayAccess: %s\n", node->arrayAccess.arrayName);
+            traverseAST(node->arrayAccess.index, level + 1);
+            break;
+        case NodeType_StmtList:
+            printf("StmtList\n");
+            traverseAST(node->stmtList.stmt, level + 1);
+            traverseAST(node->stmtList.stmtList, level + 1);
+            break;
+        case NodeType_AssignStmt:
+            printf("AssignStmt\n");
+            traverseAST(node->assignStmt.lvalue, level + 1);
+            traverseAST(node->assignStmt.expr, level + 1);
+            break;
+        case NodeType_WriteStmt:
+            printf("WriteStmt\n");
+            traverseAST(node->writeStmt.expr, level + 1);
+            break;
+        case NodeType_BlockStmt:
+            printf("BlockStmt\n");
+            traverseAST(node->blockStmt.stmtList, level + 1);
             break;
         // Add cases for other node types as needed
         default:
@@ -55,7 +80,6 @@ void traverseAST(ASTNode* node, int level) {
             break;
     }
 }
-
 
 void freeAST(ASTNode* node) {
     if (!node) return;
@@ -82,12 +106,20 @@ void freeAST(ASTNode* node) {
             freeAST(node->expr.left);
             freeAST(node->expr.right);
             break;
+        case NodeType_ArrayDecl:
+            free(node->arrayDecl.varType);
+            free(node->arrayDecl.varName);
+            break;
+        case NodeType_ArrayAccess:
+            free(node->arrayAccess.arrayName);
+            freeAST(node->arrayAccess.index);
+            break;
         case NodeType_StmtList:
             freeAST(node->stmtList.stmt);
             freeAST(node->stmtList.stmtList);
             break;
         case NodeType_AssignStmt:
-            free(node->assignStmt.varName);
+            freeAST(node->assignStmt.lvalue);
             freeAST(node->assignStmt.expr);
             break;
         case NodeType_BinOp:
@@ -96,6 +128,9 @@ void freeAST(ASTNode* node) {
             break;
         case NodeType_WriteStmt:
             freeAST(node->writeStmt.expr);
+            break;
+        case NodeType_BlockStmt:
+            freeAST(node->blockStmt.stmtList);
             break;
         default:
             break;
@@ -142,7 +177,7 @@ ASTNode* createNode(NodeType type) {
             newNode->stmtList.stmtList = NULL;
             break;
         case NodeType_AssignStmt:
-            newNode->assignStmt.varName = NULL;
+            newNode->assignStmt.lvalue = NULL;
             newNode->assignStmt.expr = NULL;
             break;
         case NodeType_BinOp:
@@ -153,7 +188,18 @@ ASTNode* createNode(NodeType type) {
         case NodeType_WriteStmt:
             newNode->writeStmt.expr = NULL;
             break;
-
+        case NodeType_ArrayDecl:
+            newNode->arrayDecl.varType = NULL;
+            newNode->arrayDecl.varName = NULL;
+            newNode->arrayDecl.size = 0;
+            break;
+        case NodeType_ArrayAccess:
+            newNode->arrayAccess.arrayName = NULL;
+            newNode->arrayAccess.index = NULL;
+            break;
+        case NodeType_BlockStmt:
+            newNode->blockStmt.stmtList = NULL;
+            break;
         default:
             break;
     }

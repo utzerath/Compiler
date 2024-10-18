@@ -249,6 +249,15 @@ bool constantPropagation(TAC** head) {
             current = current->next;
             continue;
         }
+        
+        // Handle array accesses
+        if (current->op != NULL && strcmp(current->op, "[]") == 0) {
+            // Propagate constants for array indices
+            if (isConstant(current->arg2)) {
+                safeStrReplace(&current->arg2, current->arg2);
+                changed = true;
+            }
+        }
 
         // Debug: Print TAC info before processing
         printf("Processing TAC: result='%s', arg1='%s', op='%s', arg2='%s'\n",

@@ -17,9 +17,10 @@ typedef enum {
     NodeType_AssignStmt,
     NodeType_BinOp,
     NodeType_WriteStmt,
-    NodeType_BlockStmt
+    NodeType_BlockStmt,
+    NodeType_ArrayDecl,    // Add this
+    NodeType_ArrayAccess   // Add this
 } NodeType;
-
 
 typedef struct ASTNode {
     NodeType type;
@@ -30,6 +31,7 @@ typedef struct ASTNode {
         struct {
             char* varType;  // "int" or "float"
             char* varName;
+            int size;       // Add this for array size
         } varDecl;
 
         struct {
@@ -59,7 +61,7 @@ typedef struct ASTNode {
         } stmtList;
 
         struct {
-            char* varName;
+            struct ASTNode* lvalue;  // Left-hand side can be an ID or an array access
             struct ASTNode* expr;
         } assignStmt;
 
@@ -78,9 +80,19 @@ typedef struct ASTNode {
             struct ASTNode* stmtList;
         } program;
 
+        struct {
+            char* varType;  // "int" or "float"
+            char* varName;
+            int size;       // Array size
+        } arrayDecl;        // Add this
+
+        struct {
+            char* arrayName;
+            struct ASTNode* index;
+        } arrayAccess;      // Add this
+
     };
 } ASTNode;
-
 
 // Function prototypes for AST handling
 ASTNode* createNode(NodeType type);

@@ -1,9 +1,7 @@
-#include "symbolTable.h"
+#include "symbolTable.h" 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-
 
 // Function to create a new symbol table
 SymbolTable* createSymbolTable(int size) {
@@ -32,47 +30,42 @@ unsigned int hash(SymbolTable* table, char* name) {
 }
 
 // Function to add a symbol to the table
-void addSymbol(SymbolTable* table, char* name, char* type) {
+void addSymbol(SymbolTable* table, char* name, char* type, int size) {
     Symbol* newSymbol = (Symbol*)malloc(sizeof(Symbol));
     if (!newSymbol) return;
     newSymbol->name = strdup(name);
     newSymbol->type = strdup(type);
-    // Initialize other fields of Symbol
+    newSymbol->size = size;  // Set the size
 
     if (table == NULL || table->table == NULL) {
         fprintf(stderr, "Symbol table or table array not initialized\n");
-        // Handle the error, possibly free newSymbol and return
+        free(newSymbol);
+        return;
     }
-
-
 
     unsigned int hashval = hash(table, name);
     newSymbol->next = table->table[hashval];  
     table->table[hashval] = newSymbol;
 }
+
 // Function to look up a name in the table
 Symbol* lookupSymbol(SymbolTable* table, char* name) {
     printf("Looking up %s\n", name);
     unsigned int hashval = hash(table, name);
-    #include <stddef.h> // Include the header file for NULL macro
 
-    // Search the linked list at table->table[hashval]
-    // Check if the entry at hashval is null
-
-    
     if (table->table[hashval] == NULL) {
         printf("No symbol found at hash value %u\n", hashval);
         return NULL;
     } else {
-            printf("Symbol found at hash value %u\n", hashval);
-            for (Symbol* sym = table->table[hashval]; sym != 0; sym = sym->next) {
-                printf("Symbol name: %s\n", sym->name);
-                if (strcmp(name, sym->name) == 0) return sym;
-            }
-      }   
-    
+        printf("Symbol found at hash value %u\n", hashval);
+        for (Symbol* sym = table->table[hashval]; sym != 0; sym = sym->next) {
+            printf("Symbol name: %s\n", sym->name);
+            if (strcmp(name, sym->name) == 0) return sym;
+        }
+    }
     return NULL;
 }
+
 // Function to free the symbol table
 void freeSymbolTable(SymbolTable* table) {
     for (int i = 0; i < table->size; i++) {
@@ -81,7 +74,6 @@ void freeSymbolTable(SymbolTable* table) {
             Symbol* nextSym = sym->next;
             free(sym->name);
             free(sym->type);
-            // Free other dynamically allocated fields of Symbol
             free(sym);
             sym = nextSym;
         }
@@ -96,8 +88,7 @@ void printSymbolTable(SymbolTable* table) {
     for (int i = 0; i < table->size; i++) {
         Symbol* sym = table->table[i];
         while (sym != 0) {
-            printf("Name: %s, Type: %s\n", sym->name, sym->type);
-            // Print other fields of Symbol
+            printf("Name: %s, Type: %s, Size: %d\n", sym->name, sym->type, sym->size);
             sym = sym->next;
         }
     }

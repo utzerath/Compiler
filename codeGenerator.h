@@ -1,3 +1,4 @@
+// codeGenerator.h
 #ifndef CODE_GENERATOR_H
 #define CODE_GENERATOR_H
 
@@ -74,5 +75,20 @@ int getRegisterForVariable(char* varName);
 
 // Allocate a register for a variable
 int allocateRegisterForVariable(char* varName);
+
+// Check if an operand represents an array access
+bool isArrayAccess(char* operand);
+
+// Parse an array access operand into array name and index expression
+void parseArrayAccess(char* operand, char** arrayName, char** indexExpr);
+
+// Generate code to compute the address of an array element
+void generateCodeForArrayAccess(char* arrayName, char* indexExpr, char* reg);
+
+// Get a register for an operand (variable, immediate, or array access)
+int getOperandRegister(char* operand);
+
+// Get the MIPS operator for an arithmetic operation
+char* getMipsOperator(char* op);
 
 #endif // CODE_GENERATOR_H

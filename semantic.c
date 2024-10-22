@@ -1,42 +1,158 @@
 #include "semantic.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 
 int tempVars[20]; // Array for tracking temp variables
 static int tempVarCounter = 0;
 
-TAC* tacHead = NULL; // Global head of the TAC instructions list
-
-// Function to initialize temporary variables
-void initializeTempVars() {
-    for (int i = 0; i < 20; i++) {
-        tempVars[i] = 0;
-    }
-}
-
-// Function to create a new temporary variable name
 char* createTempVar() {
     char* tempVar = (char*)malloc(10);
-    snprintf(tempVar, 10, "t%d", tempVarCounter++);  // Create a temp variable name like t0, t1, etc.
+    snprintf(tempVar, 10, "t%d", tempVarCounter++);  // Create a temp variable name like t1, t2, etc.
     return tempVar;
 }
 
-// Append TAC to the linked list
-void appendTAC(TAC** head, TAC* newInstruction) {
-    if (!*head) {
-        *head = newInstruction;
-    } else {
-        TAC* current = *head;
-        while (current->next) {
-            current = current->next;
+// Perform semantic analysis on the AST
+TAC* tacHead = NULL;
+
+void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
+    if (node == NULL) return;
+
+    switch (node->type) {
+        case NodeType_Program:
+            printf("Performing semantic analysis on program\n");
+            semanticAnalysis(node->program.varDeclList, symTab);
+            semanticAnalysis(node->program.stmtList, symTab);
+            break;
+        case NodeType_ArrayDecl:
+            if (lookupSymbol(symTab, node->arrayDecl.varName) == NULL) {
+                // Add the array to the symbol table with its size
+                addSymbol(symTab, node->arrayDecl.varName, node->arrayDecl.varType, node->arrayDecl.size);
+                printf("Added array %s of type %s with size %d to the symbol table\n", node->arrayDecl.varName, node->arrayDecl.varType, node->arrayDecl.size);
+            } else {
+                fprintf(stderr, "Semantic error: Array %s is already declared\n", node->arrayDecl.varName);
+            }
+            break;
+        case NodeType_VarDeclList:
+            semanticAnalysis(node->varDeclList.varDecl, symTab);
+            semanticAnalysis(node->varDeclList.varDeclList, symTab);
+            break;
+        
+        case NodeType_VarDecl:
+            if (lookupSymbol(symTab, node->varDecl.varName) == NULL) {
+                addSymbol(symTab, node->varDecl.varName, node->varDecl.varType, node->varDecl.size);
+                printf("Added variable %s of type %s to the symbol table\n", node->varDecl.varName, node->varDecl.varType);
+            } else {
+                fprintf(stderr, "Semantic error: Variable %s is already declared\n", node->varDecl.varName);
+            }
+            break;
+
+        case NodeType_WriteStmt: {
+            printf("Generating TAC for write statement\n");
+
+            // Get the operand for the expression to write
+            char* operand = createOperand(node->writeStmt.expr);
+
+            // Generate the TAC for the write statement
+            TAC* tac = (TAC*)malloc(sizeof(TAC));
+            if (!tac) {
+                fprintf(stderr, "Error: Memory allocation failed for TAC\n");
+                return;
+            }
+            tac->arg1 = operand;  // The operand being written
+            tac->op = strdup("write");  // The 'write' operation
+            tac->result = NULL;  // No result for 'write'
+            tac->next = NULL;
+
+            appendTAC(&tacHead, tac);
+            break;
         }
-        current->next = newInstruction;
+
+        case NodeType_StmtList:
+            semanticAnalysis(node->stmtList.stmt, symTab);
+            semanticAnalysis(node->stmtList.stmtList, symTab);
+            break;
+        
+        case NodeType_AssignStmt: {
+            printf("Generating TAC for assignment statement\n");
+
+            char* rhs = createOperand(node->assignStmt.expr);  // Generate code for the right-hand side expression
+
+            if (node->assignStmt.lvalue->type == NodeType_SimpleID) {
+                // Handle simple variable assignment
+                TAC* tac = (TAC*)malloc(sizeof(TAC));
+                tac->arg1 = rhs;
+                tac->op = strdup("=");
+                tac->result = strdup(node->assignStmt.lvalue->simpleID.name);
+                tac->next = NULL;
+                appendTAC(&tacHead, tac);
+            } else if (node->assignStmt.lvalue->type == NodeType_ArrayAccess) {
+                // Handle array access assignment
+                char* arrayName = strdup(node->assignStmt.lvalue->arrayAccess.arrayName);
+                char* index = createOperand(node->assignStmt.lvalue->arrayAccess.index);  // Get the index expression
+
+                // Generate TAC for array assignment: array[index] = rhs;
+                TAC* tac = (TAC*)malloc(sizeof(TAC));
+                tac->arg1 = rhs;
+                tac->op = strdup("=");  // Corrected operator, just "="
+                tac->result = malloc(50);  // Allocate space for result (e.g., "array[index]")
+                snprintf(tac->result, 50, "%s[%s]", arrayName, index);  // Format the result as "arr[index]"
+                tac->next = NULL;
+                appendTAC(&tacHead, tac);
+            }
+            else {
+                fprintf(stderr, "Error: Unsupported lvalue type in assignment\n");
+            }
+
+            break;
+        }
+
+        case NodeType_Expr:
+            semanticAnalysis(node->expr.left, symTab);
+            semanticAnalysis(node->expr.right, symTab);
+            break;
+        
+        case NodeType_BinOp: {
+            printf("Performing semantic analysis on binary operation\n");
+
+            semanticAnalysis(node->binOp.left, symTab);
+            semanticAnalysis(node->binOp.right, symTab);
+
+            if (node->binOp.left->type == NodeType_SimpleID &&
+                lookupSymbol(symTab, node->binOp.left->simpleID.name) == NULL) {
+                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.left->simpleID.name);
+            }
+            if (node->binOp.right->type == NodeType_SimpleID &&
+                lookupSymbol(symTab, node->binOp.right->simpleID.name) == NULL) {
+                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->binOp.right->simpleID.name);
+            }
+            break;
+        }
+
+        case NodeType_SimpleID:
+            if (lookupSymbol(symTab, node->simpleID.name) == NULL) {
+                fprintf(stderr, "Semantic error: Variable %s has not been declared\n", node->simpleID.name);
+            }
+            break;
+        
+        case NodeType_SimpleExpr:
+            // No need to check here, handled in expression generation
+            break;
+
+        case NodeType_BlockStmt:
+            semanticAnalysis(node->blockStmt.stmtList, symTab);
+            break;
+
+        default:
+            fprintf(stderr, "Unknown Node Type\n");
+            break;
+    }
+
+    // Generate TAC for expressions
+    if (node->type == NodeType_Expr || node->type == NodeType_SimpleExpr) {
+        TAC* tac = generateTACForExpr(node);
+        printTAC(tac);
     }
 }
-
-// Generate TAC for an expression
 TAC* generateTACForExpr(ASTNode* expr) {
     if (!expr) return NULL;
 
@@ -51,18 +167,57 @@ TAC* generateTACForExpr(ASTNode* expr) {
             char* leftOperand = createOperand(expr->expr.left);
             char* rightOperand = createOperand(expr->expr.right);
 
-            // Set the operator
-            instruction->op = (char*)malloc(3);
-            snprintf(instruction->op, 3, "%c", expr->expr.operator);
+            // Determine if mixed types (int and float) and handle accordingly
+            bool isLeftFloat = (expr->expr.left->type == NodeType_SimpleExpr && 
+                                expr->expr.left->simpleExpr.valueType == 'f');
+            bool isRightFloat = (expr->expr.right->type == NodeType_SimpleExpr && 
+                                 expr->expr.right->simpleExpr.valueType == 'f');
+
+            // Handle different operations based on the operator type
+            switch (expr->expr.operator) {  // Fix here
+                case '+':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("add.s");  // Float addition
+                    } else {
+                        instruction->op = strdup("+");  // Integer addition
+                    }
+                    break;
+
+                case '-':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("sub.s");  // Float subtraction
+                    } else {
+                        instruction->op = strdup("-");  // Integer subtraction
+                    }
+                    break;
+
+                case '*':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("mul.s");  // Float multiplication
+                    } else {
+                        instruction->op = strdup("*");  // Integer multiplication
+                    }
+                    break;
+
+                case '/':
+                    if (isLeftFloat || isRightFloat) {
+                        instruction->op = strdup("div.s");  // Float division
+                    } else {
+                        instruction->op = strdup("/");  // Integer division
+                    }
+                    break;
+
+                default:
+                    fprintf(stderr, "Unsupported binary operator\n");
+                    free(instruction);
+                    return NULL;
+            }
 
             // Set arguments and the result
             instruction->arg1 = leftOperand;
             instruction->arg2 = rightOperand;
             instruction->result = createTempVar();  // Create a temporary variable for the result
-            instruction->next = NULL;
-
-            appendTAC(&tacHead, instruction);
-            return instruction;
+            break;
         }
 
         case NodeType_SimpleExpr: {
@@ -74,13 +229,9 @@ TAC* generateTACForExpr(ASTNode* expr) {
                 snprintf(buffer, 20, "%f", expr->simpleExpr.floatValue);
             }
             instruction->arg1 = strdup(buffer);
-            instruction->op = strdup("=");  // Assignment operator
+            instruction->op = "=";  // Assignment operator
             instruction->result = createTempVar();  // Create temp variable for this constant value
-            instruction->arg2 = NULL;
-            instruction->next = NULL;
-
-            appendTAC(&tacHead, instruction);
-            return instruction;
+            break;
         }
 
         case NodeType_SimpleID: {
@@ -88,26 +239,26 @@ TAC* generateTACForExpr(ASTNode* expr) {
             instruction->arg1 = strdup(expr->simpleID.name);
             instruction->op = strdup("assign");
             instruction->result = createTempVar();  // Create a temp variable to hold the ID
-            instruction->arg2 = NULL;
-            instruction->next = NULL;
-
-            appendTAC(&tacHead, instruction);
-            return instruction;
+            break;
         }
 
         default:
             free(instruction);
             return NULL;
     }
+
+    instruction->next = NULL;  // Null-terminate the instruction
+    appendTAC(&tacHead, instruction);  // Add instruction to the TAC list
+    return instruction;
 }
 
-// Create operand for TAC
+// Updates in createOperand to handle both int and float correctly
 char* createOperand(ASTNode* node) {
     if (!node) return NULL;
 
     switch (node->type) {
         case NodeType_SimpleExpr: {
-            char* buffer = (char*)malloc(20);
+            char* buffer = malloc(20);
             if (node->simpleExpr.valueType == 'i') {
                 snprintf(buffer, 20, "%d", node->simpleExpr.intValue);
             } else if (node->simpleExpr.valueType == 'f') {
@@ -122,76 +273,120 @@ char* createOperand(ASTNode* node) {
 
         case NodeType_Expr: {
             TAC* exprTAC = generateTACForExpr(node);  // Recursively generate TAC
-            return strdup(exprTAC->result);  // Return the result temp variable from the TAC
+            return exprTAC->result;  // Return the result temp variable from the TAC
         }
+        case NodeType_ArrayAccess: {
+        // Generate the operand for array access (e.g., "arr[5]")
+        char* arrayName = strdup(node->arrayAccess.arrayName);
+        char* index = createOperand(node->arrayAccess.index);  // Recursively handle the index expression
+
+        char* buffer = malloc(50);  // Allocate space for the operand
+        snprintf(buffer, 50, "%s[%s]", arrayName, index);  // Format it as "arr[index]"
+        return buffer;
+}
+
 
         default:
             return NULL;
     }
 }
 
-// Print TAC instruction
+
 void printTAC(TAC* tac) {
     if (!tac) return;
 
-    if (strcmp(tac->op, "write") == 0) {
-        printf("%s %s\n", tac->op, tac->arg1);
-    } else if (strcmp(tac->op, "=") == 0) {
-        printf("%s = %s\n", tac->result, tac->arg1);
+    // Handle 'write' operation first
+    if (tac->op != NULL && strcmp(tac->op, "write") == 0) {
+        // Print the operation first followed by the operand
+        printf("%s %s\n", tac->op, tac->arg1);  // Correctly prints "write x"
     } else {
-        printf("%s = %s %s %s\n", tac->result, tac->arg1, tac->op, tac->arg2);
+        // Handle other types of instructions
+        if (tac->result != NULL)
+            printf("%s = ", tac->result);
+        if (tac->arg1 != NULL)
+            printf("%s ", tac->arg1);
+        if (tac->op != NULL)
+            printf("%s ", tac->op);
+        if (tac->arg2 != NULL)
+            printf("%s ", tac->arg2);
+        printf("\n");
     }
 }
 
-// Print TAC to file
+
+// Print the TAC list to a file
+// This function is provided for reference, you can modify it as needed
+
 void printTACToFile(const char* filename, TAC* tac) {
     FILE* file = fopen(filename , "w");
     if (!file) {
         perror("Failed to open file");
         return;
-    }
+    }   
     TAC* current = tac;
     while (current != NULL) {
         if (strcmp(current->op, "write") == 0) {
-            fprintf(file, "%s %s\n", current->op, current->arg1);
-        } else if (strcmp(current->op, "=") == 0) {
+            // Print the write operation first, followed by the argument
+            fprintf(file, "%s %s\n", current->op, current->arg1); } // Correct format: "write x"
+        else if (strcmp(current->op,"=") == 0) {
             fprintf(file, "%s = %s\n", current->result, current->arg1);
-        } else {
-            fprintf(file, "%s = %s %s %s\n", current->result, current->arg1, current->op, current->arg2);
-        }
-        current = current->next;
+        } 
+        else {
+            if(current->result != NULL)
+                fprintf(file, "%s = ", current->result);
+            if(current->arg1 != NULL)
+                fprintf(file, "%s ", current->arg1);
+            if(current->op != NULL)
+                fprintf(file, "%s ", current->op);
+            if(current->arg2 != NULL)
+                fprintf(file, "%s ", current->arg2);
+            fprintf(file, "\n");
     }
+        current = current->next;
+    }   
     fclose(file);
     printf("TAC written to %s\n", filename);
 }
 
-// Semantic analysis function
-void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
-    if (node == NULL) return;
 
-    switch (node->type) {
-        // Handle different node types...
-        case NodeType_AssignStmt: {
-            printf("Generating TAC for assignment statement\n");
+// Temporary variable allocation and deallocation functions //
 
-            // Handle the left-hand side
-            char* lhs = createOperand(node->assignStmt.lvalue);
+void initializeTempVars() {
+    for (int i = 0; i < 20; i++) {
+        tempVars[i] = 0;
+    }
+}
 
-            // Handle the right-hand side
-            char* rhs = createOperand(node->assignStmt.expr);
+int allocateNextAvailableTempVar(int tempVars[]) {
+   // implement the temp var allocation logic
+   // use the tempVars array to keep track of allocated temp vars
 
-            TAC* tac = (TAC*)malloc(sizeof(TAC));
-            tac->arg1 = rhs;
-            tac->op = strdup("=");
-            tac->result = lhs;
-            tac->arg2 = NULL;
-            tac->next = NULL;
-
-            appendTAC(&tacHead, tac);
-            break;
+    // search for the next available temp var
+    for (int i = 0; i < 20; i++) {
+        if (tempVars[i] == 0) {
+            tempVars[i] = 1;
+            return i;
         }
-        // Handle other node types...
-        default:
-            break;
+    }
+    return -1; // No available temp var
+}
+
+void deallocateTempVar(int tempVars[], int index) {
+    // implement the temp var deallocation logic
+    // use the tempVars array to keep track of allocated temp vars
+    if (index >= 0 && index < 20) {
+        tempVars[index] = 0;
+    }
+}   
+
+void appendTAC(TAC** head, TAC* newInstruction) {
+    if (!*head) {
+        *head = newInstruction;
+    } else {
+        TAC* current = *head;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = newInstruction;
     }
 }

@@ -1,0 +1,46 @@
+c = 2
+p = 18.750000
+x = 9.900000
+a = 12
+t0 = 23 / 2 
+b = t0
+t1 = 2 + 2 
+t2 = 10.500000 div.s t1 
+x = t2
+t3 = a + 5 
+t4 = c + t3 
+t5 = b + t4 
+t6 = a + t5 
+t7 = x + t6 
+y = t7
+t8 = x * p 
+z = t8
+t9 = a + p 
+p = t9
+t10 = x / p 
+k = t10
+t11 = 2.500000 div.s 1 
+t12 = 3 * t11 
+t13 = z + t12 
+z = t13
+t14 = p * x 
+t15 = t14 / x 
+l = t15
+arr[0] = 5
+arr[1] = 10
+t16 = arr[0] + arr[1] 
+arr[2] = t16
+t17 = arr[2] * 2 
+arr[3] = t17
+y = arr[3]
+t18 = arr[2] + arr[1] 
+z = t18
+write k
+write x
+write y
+write b
+write z
+write arr[0]
+write arr[1]
+write arr[2]
+write arr[3]

@@ -27,13 +27,6 @@ MIPSRegister tempRegisters[NUM_TEMP_REGISTERS] = {
 // List to track variable declarations dynamically
 VarList* declaredVariables = NULL;
 
-// Helper functions to process array accesses
-bool isArrayAccess(char* operand);
-void parseArrayAccess(char* operand, char** arrayName, char** indexExpr);
-void generateCodeForArrayAccess(char* arrayName, char* indexExpr, char* reg);
-
-// Function implementations
-
 // Declare variables dynamically from the TAC
 void declareVariablesFromTAC(TAC* tacInstructions) {
     TAC* current = tacInstructions;
@@ -123,7 +116,6 @@ void initCodeGenerator(const char* outputFilename) {
         exit(EXIT_FAILURE);
     }
 }
-
 // Generate MIPS code from TAC
 void generateMIPS(TAC* tacInstructions) {
     TAC* current = tacInstructions;
@@ -147,7 +139,6 @@ void generateMIPS(TAC* tacInstructions) {
 
                 // Generate code to compute the address of arr[index]
                 char addressReg[5] = "$a0";  // Use $a0 as temporary register for address
-
                 generateCodeForArrayAccess(arrayName, indexExpr, addressReg);
 
                 // Generate code to load the value into a register
@@ -187,7 +178,7 @@ void generateMIPS(TAC* tacInstructions) {
                     fprintf(outputFile, "\tli %s, %s\n", tempRegisters[regResult].name, current->arg1);
                 } else {
                     // Get or load arg1 into a register
-                    int regArg1 = getRegisterForVariable(current->arg1);
+                    int regArg1 = getOperandRegister(current->arg1);
                     if (regArg1 == -1) {
                         regArg1 = allocateRegisterForVariable(current->arg1);
                         if (regArg1 == -1) {
@@ -270,6 +261,7 @@ void generateMIPS(TAC* tacInstructions) {
     // Add program termination syscall
     fprintf(outputFile, "\tli $v0, 10\n\tsyscall\n");
 }
+
 
 // Helper function to check if an operand represents an array access
 bool isArrayAccess(char* operand) {

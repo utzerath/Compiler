@@ -1,6 +1,7 @@
 float x;
 float p;
 float z;
+float l;
 int y;
 int a;
 int b;
@@ -18,6 +19,7 @@ z = x * p;
 p = a + p;
 k = x / p;
 z = z + 3 * (2.5 / 1);
+l = (p * x) / x;
 
 arr[0] = 5;
 arr[1] = 10;

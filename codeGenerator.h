@@ -91,4 +91,8 @@ int getOperandRegister(char* operand);
 // Get the MIPS operator for an arithmetic operation
 char* getMipsOperator(char* op);
 
+void generateCodeForArrayAccess(char* arrayName, char* indexExpr, char* reg);
+void parseArrayAccess(char* operand, char** arrayName, char** indexExpr);
+bool isArrayAccess(char* operand);
+
 #endif // CODE_GENERATOR_H

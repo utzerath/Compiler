@@ -1,40 +1,9 @@
-float x;
-float p;
-float z;
-float l;
-int y;
-int a;
-int b;
-int c;
-int arr[10]; 
+int main(int a) {
+    int globalVar;
+    globalVar = 5;
+    return globalVar;
+}
 
-c = 2;
-p = 18.75;
-x = 9.9;
-a = 12;
-b = 23 / 2;
-x = 10.5 / (2 + 2);
-y = x + a + b + c + a + 5;
-z = x * p;
-p = a + p;
-k = x / p;
-z = z + 3 * (2.5 / 1);
-l = (p * x) / x;
-
-arr[0] = 5;
-arr[1] = 10;
-arr[2] = arr[0] + arr[1];
-arr[3] = arr[2] * 2;
-
-y = arr[3];
-z = arr[2] + arr[1];
-
-write k;
-write x;
-write y;
-write b;
-write z;
-write arr[0];
-write arr[1];
-write arr[2];
-write arr[3];
+int lol() {
+    return 0;
+}

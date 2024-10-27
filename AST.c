@@ -1,6 +1,8 @@
 #include "AST.h"
+#include "symbolTable.h"  // Include symbol table to access Param
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 int indentValue = 2;
 
@@ -11,29 +13,39 @@ void printIndent(int level) {
 }
 
 void traverseAST(ASTNode* node, int level) {
-    if (!node) {
-        printf("Nothing to traverse\n");
-        return;
+    if (node == NULL) {
+        return; // Base case: do nothing if the node is NULL
     }
 
+    // Print indentation based on the current level
     for (int i = 0; i < level; i++) {
         printf("--");
     }
 
+    // Print the current node's type
+    //printf("Traversing node type %d at level %d\n", node->type, level);
+
+    // Switch on the type of node to handle specific cases
     switch (node->type) {
         case NodeType_Program:
             printf("Program\n");
-            traverseAST(node->program.varDeclList, level + 1);
-            traverseAST(node->program.stmtList, level + 1);
+            traverseAST(node->program.varDeclList, level + 1); // Traverse variable declarations
+            traverseAST(node->program.funcDeclList, level + 1); // Traverse function declarations
+            if (node->program.stmtList != NULL) {
+                traverseAST(node->program.stmtList, level + 1); // Traverse statements
+            }
             break;
+
         case NodeType_VarDeclList:
             printf("VarDeclList\n");
-            traverseAST(node->varDeclList.varDecl, level + 1);
-            traverseAST(node->varDeclList.varDeclList, level + 1);
+            traverseAST(node->varDeclList.varDecl, level + 1); // Traverse each variable declaration
+            traverseAST(node->varDeclList.varDeclList, level + 1); // Traverse the next variable declarations
             break;
+
         case NodeType_VarDecl:
             printf("VarDecl: %s %s\n", node->varDecl.varType, node->varDecl.varName);
             break;
+
         case NodeType_SimpleExpr:
             if (node->simpleExpr.valueType == 'i') {
                 printf("Int: %d\n", node->simpleExpr.intValue);
@@ -41,170 +53,386 @@ void traverseAST(ASTNode* node, int level) {
                 printf("Float: %f\n", node->simpleExpr.floatValue);
             }
             break;
+
         case NodeType_SimpleID:
             printf("Identifier: %s\n", node->simpleID.name);
             break;
-        case NodeType_Expr:
-            printf("Expr: %c\n", node->expr.operator);
-            traverseAST(node->expr.left, level + 1);
-            traverseAST(node->expr.right, level + 1);
+
+        case NodeType_BinOp:
+            printf("BinOp: %c\n", node->binOp.operator);
+            traverseAST(node->binOp.left, level + 1); // Traverse left operand
+            traverseAST(node->binOp.right, level + 1); // Traverse right operand
             break;
+
         case NodeType_ArrayDecl:
             printf("ArrayDecl: %s %s[%d]\n", node->arrayDecl.varType, node->arrayDecl.varName, node->arrayDecl.size);
             break;
+
         case NodeType_ArrayAccess:
             printf("ArrayAccess: %s\n", node->arrayAccess.arrayName);
-            traverseAST(node->arrayAccess.index, level + 1);
+            if (node->arrayAccess.index != NULL) { // Check if index is valid before traversing
+                traverseAST(node->arrayAccess.index, level + 1);
+            } else {
+                printf("Warning: Array access index is NULL.\n");
+            }
             break;
+
         case NodeType_StmtList:
             printf("StmtList\n");
-            traverseAST(node->stmtList.stmt, level + 1);
-            traverseAST(node->stmtList.stmtList, level + 1);
+            if (node->stmtList.stmt != NULL) {
+                traverseAST(node->stmtList.stmt, level + 1); // Traverse the first statement
+            }
+            if (node->stmtList.stmtList != NULL) {
+                traverseAST(node->stmtList.stmtList, level); // Traverse the rest of the statements
+            }
             break;
+
         case NodeType_AssignStmt:
             printf("AssignStmt\n");
-            traverseAST(node->assignStmt.lvalue, level + 1);
-            traverseAST(node->assignStmt.expr, level + 1);
+            if (node->assignStmt.lvalue != NULL) {
+                traverseAST(node->assignStmt.lvalue, level + 1); // Traverse left-hand side
+            } else {
+                printf("Warning: AssignStmt lvalue is NULL.\n");
+            }
+            if (node->assignStmt.expr != NULL) {
+                traverseAST(node->assignStmt.expr, level + 1); // Traverse right-hand side
+            } else {
+                printf("Warning: AssignStmt expr is NULL.\n");
+            }
             break;
+
         case NodeType_WriteStmt:
             printf("WriteStmt\n");
-            traverseAST(node->writeStmt.expr, level + 1);
+            if (node->writeStmt.expr != NULL) {
+                traverseAST(node->writeStmt.expr, level + 1); // Traverse the expression being written
+            } else {
+                printf("Warning: WriteStmt expr is NULL.\n");
+            }
             break;
+
         case NodeType_BlockStmt:
             printf("BlockStmt\n");
-            traverseAST(node->blockStmt.stmtList, level + 1);
+            if (node->blockStmt.stmtList != NULL) {
+                traverseAST(node->blockStmt.stmtList, level + 1); // Traverse statements within the block
+            } else {
+                printf("Warning: BlockStmt stmtList is NULL.\n");
+            }
             break;
-        // Add cases for other node types as needed
+
+        case NodeType_Param:
+            printf("Parameter: %s of type %s\n", node->param.varName, node->param.varType);
+            break;
+
+        case NodeType_ParamList:
+            printf("Parameter List\n");
+            
+            // Check if the current parameter node is not NULL
+            if (node->paramList.param != NULL) {
+                traverseAST(node->paramList.param, level + 1); // Traverse the current parameter
+            } else {
+                printf("Warning: Parameter List param is NULL.\n");
+            }
+
+            // Traverse the next parameter in the list, if it exists
+            if (node->paramList.paramList != NULL) {
+                traverseAST(node->paramList.paramList, level + 1); // Traverse the next parameter list
+            } else {
+                printf("Warning: No more parameters in the Parameter List.\n");
+            }
+            break;
+
+
+        case NodeType_FuncDeclList: {
+        printf("Function Declaration List:\n");
+        ASTNode* currentList = node;
+        while (currentList != NULL) {
+            ASTNode* funcDeclNode = currentList->funcDeclList.funcDecl;
+            if (funcDeclNode != NULL) {
+                traverseAST(funcDeclNode, level + 1); // Traverse the current FuncDecl
+            }
+            currentList = currentList->funcDeclList.funcDeclList; // Move to the next FuncDeclList node
+        }
+        break;
+}
+
+
+        case NodeType_FuncDecl: {
+            printf("Function Declaration: %s, Return Type: %s\n", node->funcDecl.name, node->funcDecl.returnType);
+            
+            if (node->funcDecl.paramList != NULL) {
+                traverseAST(node->funcDecl.paramList, level + 1); // Traverse parameters
+            } else {
+                printf("Warning: Function Declaration paramList is NULL.\n");
+            }
+            
+            if (node->funcDecl.stmtList != NULL) {
+                traverseAST(node->funcDecl.stmtList, level + 1); // Traverse statements
+            } else {
+                printf("Warning: Function Declaration stmtList is NULL.\n");
+            }
+            
+            if (node->funcDecl.returnStmt != NULL) {
+                traverseAST(node->funcDecl.returnStmt, level + 1); // Traverse return statement
+            } else {
+                printf("Warning: Function Declaration returnStmt is NULL.\n");
+            }
+            break;
+        }
+
+
+        case NodeType_FuncCall:
+            printf("Function Call: %s\n", node->funcCall.name);
+            if (node->funcCall.args != NULL) {
+                traverseAST(node->funcCall.args, level + 1); // Traverse arguments
+            } else {
+                printf("Warning: Function Call args is NULL.\n");
+            }
+            break;
+
+        case NodeType_ReturnStmt:
+            printf("Return Statement\n");
+            if (node->returnStmt.expr) {
+                traverseAST(node->returnStmt.expr, level + 1);
+            } else {
+                printf("Warning: Return Statement expr is NULL.\n");
+            }
+            break;
+
+        case NodeType_ArgList:
+            printf("Argument List\n");
+            if (node->argList.arg != NULL) {
+                traverseAST(node->argList.arg, level + 1); // Traverse the current argument
+            } else {
+                printf("Warning: Argument List arg is NULL.\n");
+            }
+            if (node->argList.next != NULL) {
+                traverseAST(node->argList.next, level + 1); // Traverse the next argument
+            }
+            break;
+
         default:
-            printf("Unknown node type\n");
-            break;
+            printf("Unknown node type: %d\n", node->type); // Print unknown node types
+            return; // Stop further processing on invalid nodes
     }
 }
 
 void freeAST(ASTNode* node) {
-    if (!node) return;
+    if (node == NULL) {
+        return; // Base case: do nothing if the node is NULL
+    }
 
+    // Free based on the node type
     switch (node->type) {
         case NodeType_Program:
             freeAST(node->program.varDeclList);
+            freeAST(node->program.funcDeclList);
             freeAST(node->program.stmtList);
             break;
+
         case NodeType_VarDeclList:
             freeAST(node->varDeclList.varDecl);
             freeAST(node->varDeclList.varDeclList);
             break;
+
         case NodeType_VarDecl:
-            free(node->varDecl.varType);
-            free(node->varDecl.varName);
+            free(node->varDecl.varType); // Free allocated string
+            free(node->varDecl.varName); // Free allocated string
             break;
+
         case NodeType_SimpleExpr:
+            // Free any members if necessary
             break;
+
         case NodeType_SimpleID:
-            free(node->simpleID.name);
+            free(node->simpleID.name); // Free allocated string
             break;
-        case NodeType_Expr:
-            freeAST(node->expr.left);
-            freeAST(node->expr.right);
-            break;
-        case NodeType_ArrayDecl:
-            free(node->arrayDecl.varType);
-            free(node->arrayDecl.varName);
-            break;
-        case NodeType_ArrayAccess:
-            free(node->arrayAccess.arrayName);
-            freeAST(node->arrayAccess.index);
-            break;
-        case NodeType_StmtList:
-            freeAST(node->stmtList.stmt);
-            freeAST(node->stmtList.stmtList);
-            break;
-        case NodeType_AssignStmt:
-            freeAST(node->assignStmt.lvalue);
-            freeAST(node->assignStmt.expr);
-            break;
+
         case NodeType_BinOp:
             freeAST(node->binOp.left);
             freeAST(node->binOp.right);
             break;
+
+        case NodeType_ArrayDecl:
+            free(node->arrayDecl.varType); // Free allocated string
+            free(node->arrayDecl.varName); // Free allocated string
+            break;
+
+        case NodeType_ArrayAccess:
+            free(node->arrayAccess.arrayName); // Free allocated string
+            freeAST(node->arrayAccess.index);
+            break;
+
+        case NodeType_StmtList:
+            freeAST(node->stmtList.stmt);
+            freeAST(node->stmtList.stmtList);
+            break;
+
+        case NodeType_AssignStmt:
+            freeAST(node->assignStmt.lvalue);
+            freeAST(node->assignStmt.expr);
+            break;
+
         case NodeType_WriteStmt:
             freeAST(node->writeStmt.expr);
             break;
+
         case NodeType_BlockStmt:
             freeAST(node->blockStmt.stmtList);
             break;
+
+        case NodeType_Param:
+            free(node->param.varType); // Free allocated string
+            free(node->param.varName); // Free allocated string
+            break;
+
+        case NodeType_ParamList:
+            freeAST(node->paramList.param); // Free the parameter node
+            freeAST(node->paramList.paramList); // Free the next parameter list
+            break;
+
+        case NodeType_FuncDeclList:
+            freeAST(node->funcDeclList.funcDecl); // Free the function declaration
+            freeAST(node->funcDeclList.funcDeclList); // Free the next function declaration list
+            break;
+
+        case NodeType_FuncDecl:
+            free(node->funcDecl.returnType); // Free allocated string
+            free(node->funcDecl.name); // Free allocated string
+            freeAST(node->funcDecl.paramList); // Free the parameter list
+            freeAST(node->funcDecl.stmtList); // Free the statement list
+            freeAST(node->funcDecl.returnStmt); // Free the return statement
+            break;
+
+        case NodeType_FuncCall:
+            free(node->funcCall.name); // Free allocated string
+            freeAST(node->funcCall.args); // Free the arguments list
+            break;
+
+        case NodeType_ReturnStmt:
+            freeAST(node->returnStmt.expr); // Free the expression in the return statement
+            break;
+
+        case NodeType_ArgList:
+            freeAST(node->argList.arg); // Free the argument node
+            freeAST(node->argList.next); // Free the next argument
+            break;
+
         default:
+            printf("Unknown node type: %d\n", node->type);
             break;
     }
+
+    // Finally free the node itself
     free(node);
 }
-
 ASTNode* createNode(NodeType type) {
     ASTNode* newNode = (ASTNode*)malloc(sizeof(ASTNode));
     if (newNode == NULL) {
-        return NULL;
+        fprintf(stderr, "Memory allocation failed for ASTNode\n");
+        exit(EXIT_FAILURE); // Handle memory allocation failure
     }
 
-    newNode->type = type;
+    newNode->type = type; // Set the type of the node
+    
+    printf("Created node of type %d at address %p\n", type, (void*)newNode);
 
+    // Initialize all members to NULL or default values to avoid undefined behavior
+    // Initialize the common node types
     switch (type) {
         case NodeType_Program:
             newNode->program.varDeclList = NULL;
+            newNode->program.funcDeclList = NULL;
             newNode->program.stmtList = NULL;
             break;
+
         case NodeType_VarDeclList:
             newNode->varDeclList.varDecl = NULL;
             newNode->varDeclList.varDeclList = NULL;
             break;
+
         case NodeType_VarDecl:
             newNode->varDecl.varType = NULL;
             newNode->varDecl.varName = NULL;
             break;
+
         case NodeType_SimpleExpr:
-            newNode->simpleExpr.intValue = 0;   // Initialize both int and float
+            newNode->simpleExpr.intValue = 0;
             newNode->simpleExpr.floatValue = 0.0;
-            newNode->simpleExpr.valueType = 'i';  // Default to int
+            newNode->simpleExpr.valueType = 'i'; // Default to integer
             break;
+
         case NodeType_SimpleID:
             newNode->simpleID.name = NULL;
             break;
-        case NodeType_Expr:
-            newNode->expr.operator = '\0';
-            newNode->expr.left = NULL;
-            newNode->expr.right = NULL;
-            break;
-        case NodeType_StmtList:
-            newNode->stmtList.stmt = NULL;
-            newNode->stmtList.stmtList = NULL;
-            break;
-        case NodeType_AssignStmt:
-            newNode->assignStmt.lvalue = NULL;
-            newNode->assignStmt.expr = NULL;
-            break;
+
         case NodeType_BinOp:
             newNode->binOp.operator = '\0';
             newNode->binOp.left = NULL;
             newNode->binOp.right = NULL;
             break;
-        case NodeType_WriteStmt:
-            newNode->writeStmt.expr = NULL;
-            break;
+
         case NodeType_ArrayDecl:
             newNode->arrayDecl.varType = NULL;
             newNode->arrayDecl.varName = NULL;
             newNode->arrayDecl.size = 0;
             break;
+
         case NodeType_ArrayAccess:
             newNode->arrayAccess.arrayName = NULL;
             newNode->arrayAccess.index = NULL;
             break;
+
+        case NodeType_StmtList:
+            newNode->stmtList.stmt = NULL;
+            newNode->stmtList.stmtList = NULL;
+            break;
+
+        case NodeType_AssignStmt:
+            newNode->assignStmt.lvalue = NULL;
+            newNode->assignStmt.expr = NULL;
+            break;
+
+        case NodeType_WriteStmt:
+            newNode->writeStmt.expr = NULL;
+            break;
+
         case NodeType_BlockStmt:
             newNode->blockStmt.stmtList = NULL;
             break;
+
+        case NodeType_FuncDeclList:
+            newNode->funcDeclList.funcDecl = NULL;
+            newNode->funcDeclList.funcDeclList = NULL;
+            break;
+
+        case NodeType_FuncDecl:
+            newNode->funcDecl.returnType = NULL; // Initialize returnType
+            newNode->funcDecl.name = NULL;        // Initialize name
+            newNode->funcDecl.paramList = NULL;   // Initialize paramList
+            newNode->funcDecl.stmtList = NULL;    // Initialize statement list
+            newNode->funcDecl.returnStmt = NULL;  // Initialize return statement
+            break;
+
+        case NodeType_FuncCall:
+            newNode->funcCall.name = NULL; // Initialize function call name
+            newNode->funcCall.args = NULL;  // Initialize arguments list
+            break;
+
+        case NodeType_ReturnStmt:
+            newNode->returnStmt.expr = NULL; // Initialize return statement expression
+            break;
+
+        case NodeType_ArgList:
+            newNode->argList.arg = NULL; // Initialize argument node
+            newNode->argList.next = NULL; // Initialize next argument
+            break;
+
+        // Add cases for any additional node types you've defined
         default:
             break;
     }
 
-    return newNode;
+    return newNode; // Return the newly created node
 }
 
 ASTNode* createIntNode(int value) {
@@ -228,3 +456,54 @@ ASTNode* createFloatNode(float value) {
     node->simpleExpr.valueType = 'f';  // Mark this node as holding a float
     return node;
 }
+
+ASTNode* createFuncDeclNode(char* returnType, char* name, ASTNode* paramList, ASTNode* stmtList, ASTNode* returnStmt) {
+    ASTNode* node = createNode(NodeType_FuncDecl);
+    node->funcDecl.returnType = strdup(returnType);
+    node->funcDecl.name = strdup(name);
+    node->funcDecl.paramList = paramList; // Make sure this is linked correctly
+    node->funcDecl.stmtList = stmtList;
+    node->funcDecl.returnStmt = returnStmt;
+    return node;
+}
+
+
+ASTNode* createFuncCallNode(char* name, ASTNode* args) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    node->type = NodeType_FuncCall;
+    node->funcCall.name = strdup(name);
+    node->funcCall.args = args;
+    return node;
+}
+ASTNode* createArgList(ASTNode* arg, ASTNode* next) {
+    ASTNode* node = createNode(NodeType_ArgList);
+    node->argList.arg = arg;
+    node->argList.next = next;
+    return node;
+}
+ASTNode* createParamNode(char* varType, char* varName) {
+    ASTNode* node = createNode(NodeType_Param);
+    node->param.varType = strdup(varType); // Copy varType
+    node->param.varName = strdup(varName); // Copy varName
+    return node;
+}
+
+ASTNode* createParamListNode(ASTNode* param, ASTNode* nextParamList) {
+    ASTNode* node = createNode(NodeType_ParamList);
+    node->paramList.param = param; // Assign the current parameter
+    node->paramList.paramList = nextParamList; // Link to the next parameter list
+    printf("Creating ParamListNode with param: %p, nextParamList: %p\n", (void*)param, (void*)nextParamList);
+
+    return node;
+}
+
+
+
+ASTNode* createReturnNode(ASTNode* expr) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    node->type = NodeType_ReturnStmt;
+    node->returnStmt.expr = expr;
+    return node;
+}
+
+

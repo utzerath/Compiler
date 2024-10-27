@@ -48,6 +48,18 @@ ws          {delim}+
             return TYPE;
         }
 
+"void" {words++; chars += yyleng;
+            printf("%s : TYPE\n", yytext);
+            yylval.string = strdup(yytext); 
+            return VOID;
+        }
+
+"return" {words++; chars += yyleng;
+            printf("%s : RETURN\n", yytext);
+            yylval.string = strdup(yytext); 
+            return RETURN;
+        }
+
 "write" {words++; chars += yyleng;
             printf("%s : WRITE\n", yytext);
             yylval.string = strdup(yytext); 
@@ -72,12 +84,19 @@ ws          {delim}+
               return FLOAT_LITERAL;
             }
 
+","     {chars++;
+          printf("%s : COMMA\n", yytext);
+          yylval.character = yytext[0];
+          return COMMA;
+        }
+
 ";"     {chars++;
           printf("%s : SEMICOLON\n", yytext);
+          printf("Lexer: Found SEMICOLON -> %s : SEMICOLON at line %d\n", yytext, yylineno);
           yylval.character = yytext[0]; 
           return SEMICOLON;
         }
-        
+
 "="     {chars++;
           printf("%s : EQ\n", yytext);
           yylval.operator = strdup(yytext); 

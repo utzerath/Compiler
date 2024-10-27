@@ -55,7 +55,10 @@
      CLOSE_PAREN = 271,
      ID = 272,
      OPEN_BRACKET = 273,
-     CLOSE_BRACKET = 274
+     CLOSE_BRACKET = 274,
+     RETURN = 275,
+     VOID = 276,
+     COMMA = 277
    };
 #endif
 /* Tokens.  */
@@ -76,23 +79,26 @@
 #define ID 272
 #define OPEN_BRACKET 273
 #define CLOSE_BRACKET 274
+#define RETURN 275
+#define VOID 276
+#define COMMA 277
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 27 "parser.y"
+#line 26 "parser.y"
 {
     int number;
     float float_number;  // Add float support
     char character;      // BinOp returns a char
     char* string;
     char* operator;
-    struct ASTNode* ast;
+    struct ASTNode* ast; // Use ASTNode for representing AST parts, including function params and list nodes
 }
 /* Line 1529 of yacc.c.  */
-#line 96 "parser.tab.h"
+#line 102 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

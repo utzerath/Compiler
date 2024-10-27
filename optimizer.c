@@ -253,10 +253,6 @@ bool isFloatConstant(const char* str) {
 }
 
 
-
-
-
-
 bool constantPropagation(TAC** head) {
    TAC* current = *head;
    bool changed = false;

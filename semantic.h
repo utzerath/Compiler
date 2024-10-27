@@ -28,5 +28,6 @@ void printTAC(TAC* tac);                                // Print TAC to the cons
 void printTACToFile(const char* filename, TAC* tac);    // Print TAC to a file
 void semanticAnalysis(ASTNode* node, SymbolTable* symTab);
  // Perform semantic analysis           // Promote an int operand to float
-
+// Add this declaration to the top of your semantic.c file
+char* promoteIntToFloat(char* intOperand);
 #endif // SEMANTIC_H

@@ -1,38 +1,41 @@
 #ifndef AST_H
 #define AST_H
 
+#include "symbolTable.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-// NodeType enum to differentiate between different 
-// kinds of AST nodes
 typedef enum {
     NodeType_Program,
     NodeType_VarDeclList,
     NodeType_VarDecl,
     NodeType_SimpleExpr,
     NodeType_SimpleID,
-    NodeType_Expr,
-    NodeType_StmtList,
-    NodeType_AssignStmt,
     NodeType_BinOp,
+    NodeType_AssignStmt,
     NodeType_WriteStmt,
+    NodeType_ArrayDecl,
+    NodeType_ArrayAccess,
+    NodeType_StmtList,
     NodeType_BlockStmt,
-    NodeType_ArrayDecl,    // Add this
-    NodeType_ArrayAccess   // Add this
+    NodeType_FuncDecl,
+    NodeType_FuncDeclList,
+    NodeType_ParamList,
+    NodeType_FuncCall,
+    NodeType_ReturnStmt,
+    NodeType_Param,
+    NodeType_ArgList
 } NodeType;
 
+// Single typedef and struct definition for ASTNode
 typedef struct ASTNode {
     NodeType type;
     union {
         struct {
-            struct ASTNode* stmtList;  // Block holds a list of statements
-        } blockStmt;
-        struct {
-            char* varType;  // "int" or "float"
-            char* varName;
-            int size;       // Add this for array size
-        } varDecl;
+            struct ASTNode* varDeclList;
+            struct ASTNode* stmtList;
+            struct ASTNode* funcDeclList;
+        } program;
 
         struct {
             struct ASTNode* varDecl;
@@ -40,9 +43,15 @@ typedef struct ASTNode {
         } varDeclList;
 
         struct {
-            int intValue;      // For integer constants
-            float floatValue;  // For float constants
-            char valueType;    // 'i' for int, 'f' for float
+            char* varType;
+            char* varName;
+            int size;
+        } varDecl;
+
+        struct {
+            int intValue;
+            float floatValue;
+            char valueType;
         } simpleExpr;
 
         struct {
@@ -53,7 +62,20 @@ typedef struct ASTNode {
             struct ASTNode* left;
             struct ASTNode* right;
             char operator;
-        } expr;
+        } binOp;
+
+        struct {
+            struct ASTNode* lvalue;
+            struct ASTNode* expr;
+        } assignStmt;
+
+        struct {
+            struct ASTNode* expr;
+        } writeStmt;
+
+        struct {
+            struct ASTNode* stmtList;
+        } blockStmt;
 
         struct {
             struct ASTNode* stmt;
@@ -61,43 +83,68 @@ typedef struct ASTNode {
         } stmtList;
 
         struct {
-            struct ASTNode* lvalue;  // Left-hand side can be an ID or an array access
-            struct ASTNode* expr;
-        } assignStmt;
-
-        struct {
-            struct ASTNode* left;
-            struct ASTNode* right;
-            char operator;
-        } binOp;
-
-        struct {
-            struct ASTNode* expr;
-        } writeStmt;
-
-        struct {
-            struct ASTNode* varDeclList;
-            struct ASTNode* stmtList;
-        } program;
-
-        struct {
-            char* varType;  // "int" or "float"
+            char* varType;
             char* varName;
-            int size;       // Array size
-        } arrayDecl;        // Add this
-
+            int size;
+        } arrayDecl;
+        
         struct {
             char* arrayName;
             struct ASTNode* index;
-        } arrayAccess;      // Add this
+        } arrayAccess;
 
+        struct {
+            struct ASTNode* paramList; // This will hold a linked list of parameters as ASTNodes
+            char* returnType;          // Return type for function declaration
+            char* name;                // Function name
+            struct ASTNode* stmtList;  // Function body
+            struct ASTNode* returnStmt; // Return statement if any
+        } funcDecl;
+        struct {
+            struct ASTNode* funcDecl;
+            struct ASTNode* funcDeclList;
+        } funcDeclList;
+
+        struct {
+            char* name;
+            struct ASTNode* args;
+        } funcCall;
+
+        struct {
+            struct ASTNode* param;
+            struct ASTNode* paramList;
+        } paramList;
+
+        struct {
+            char* varType;
+            char* varName;
+        } param;
+
+        struct {
+            struct ASTNode* expr;
+        } returnStmt;
+
+        struct {
+            struct ASTNode* arg;
+            struct ASTNode* next;
+        } argList;
     };
 } ASTNode;
 
 // Function prototypes for AST handling
 ASTNode* createNode(NodeType type);
-ASTNode* createIntNode(int value);         // Create a node for integer values
-ASTNode* createFloatNode(float value);     // Create a node for float values
+ASTNode* createIntNode(int value);
+ASTNode* createFloatNode(float value);
+ASTNode* createFuncDeclNode(char* returnType, char* name, ASTNode* params, ASTNode* stmtList, ASTNode* returnStmt);
+ASTNode* createFuncCallNode(char* name, ASTNode* args);
+ASTNode* createArgList(ASTNode* arg, ASTNode* next);
+ASTNode* createParamList(ASTNode* param);
+ASTNode* createParamNode(char* varType, char* varName);
+ASTNode* createReturnNode(ASTNode* expr);
+// Change this line in AST.h
+ASTNode* createParamListNode(ASTNode* param, ASTNode* nextParamList);
+
+
 void freeAST(ASTNode* node);
 void traverseAST(ASTNode* node, int level);
 

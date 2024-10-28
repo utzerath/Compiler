@@ -100,23 +100,44 @@ void freeSymbolTable(SymbolTable* table) {
 
 void printSymbolTable(SymbolTable* table) {
     printf("----- SYMBOL TABLE -----\n");
+
+    // First, print global scope entries (scope level 0)
+    printf("Global Scope (Level 0):\n");
     for (int i = 0; i < table->size; i++) {
         Symbol* sym = table->table[i];
         while (sym != NULL) {
-            if (sym->isFunction) {
-                printf("Function %s with return type %s at scope level %d\n", sym->name, sym->type, sym->scopeLevel);
-                if (sym->localSymbolTable) {
-                    printf("Parameters and Local Variables:\n");
-                    printSymbolTable(sym->localSymbolTable);  // Print local symbols recursively for functions
+            if (sym->scopeLevel == 0) {
+                if (sym->isFunction) {
+                    printf("  Function %s with return type %s\n", sym->name, sym->type);
+
+                    // Now print the function's scope (level 1) for this function specifically
+                    printf("\nScope Level 1 (%s):\n", sym->name);
+
+                    // Traverse the entire table to find symbols at level 1
+                    int isFirstLocal = 1; // Track whether we’re printing parameters first
+                    for (int j = 0; j < table->size; j++) {
+                        Symbol* localSym = table->table[j];
+                        while (localSym != NULL) {
+                            // Look only at symbols at scope level 1 (function scope level)
+                            if (localSym->scopeLevel == 1) {
+                                if (isFirstLocal) {
+                                    printf("  Parameter %s of type %s\n", localSym->name, localSym->type);
+                                    isFirstLocal = 0;
+                                } else {
+                                    printf("  Variable %s of type %s\n", localSym->name, localSym->type);
+                                }
+                            }
+                            localSym = localSym->next;
+                        }
+                    }
                 }
-            } else {
-                printf("Variable %s of type %s at scope level %d\n", sym->name, sym->type, sym->scopeLevel);
             }
             sym = sym->next;
         }
     }
     printf("------------------------\n");
 }
+
 
 
 // Assuming you have a global symbol table instance elsewhere

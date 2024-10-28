@@ -163,30 +163,27 @@ FuncDeclList:
 
 
 FuncDecl:
-    TYPE ID OPEN_PAREN ParamList CLOSE_PAREN SEMICOLON {
-        printf("PARSER: Recognized function declaration: %s\n", $2);
-        // Add the function itself to the global scope
-        addSymbol(symTab, $2, $1, 1, NULL); // isFunction set to 1
-        $$ = createFuncDeclNode($1, $2, $4, NULL, NULL); // No body
-    }
-    | VOID ID OPEN_PAREN ParamList CLOSE_PAREN SEMICOLON {
-        printf("PARSER: Recognized void function declaration: %s\n", $2);
-        addSymbol(symTab, $2, "void", 1, NULL); // Add void function to global scope
-        $$ = createFuncDeclNode("void", $2, $4, NULL, NULL); // No body
-    }
-    | TYPE ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE scope_enter StmtList ReturnStmt CLOSE_BRACE scope_exit {
+    TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit {
         printf("PARSER: Recognized function declaration: %s\n", $2);
         addSymbol(symTab, $2, $1, 1, NULL); // Add function to global scope
-        $$ = createFuncDeclNode($1, $2, $4, $8, $9); // Body present
+        $$ = createFuncDeclNode($1, $2, $5, NULL, NULL); // No body
     }
-    | VOID ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE scope_enter StmtList CLOSE_BRACE scope_exit {
+    | VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit {
         printf("PARSER: Recognized void function declaration: %s\n", $2);
         addSymbol(symTab, $2, "void", 1, NULL); // Add void function to global scope
-        $$ = createFuncDeclNode("void", $2, $4, $7, NULL); // No return statement
+        $$ = createFuncDeclNode("void", $2, $5, NULL, NULL); // No body
+    }
+    | TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit {
+        printf("PARSER: Recognized function declaration: %s\n", $2);
+        addSymbol(symTab, $2, $1, 1, NULL); // Add function to global scope
+        $$ = createFuncDeclNode($1, $2, $5, $8, $9); // Body present
+    }
+    | VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit {
+        printf("PARSER: Recognized void function declaration: %s\n", $2);
+        addSymbol(symTab, $2, "void", 1, NULL); // Add void function to global scope
+        $$ = createFuncDeclNode("void", $2, $5, $8, NULL); // No return statement
     }
 ;
-
-
 
 
 scope_enter:

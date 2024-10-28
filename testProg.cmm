@@ -1,9 +1,11 @@
 int main(int a) {
-    int globalVar;
-    globalVar = 5;
-    return globalVar;
+    int l;
+    int k;
+    l = 5;
+    return l;
 }
 
 int lol() {
+    float p;
     return 0;
 }

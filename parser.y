@@ -54,6 +54,7 @@ Symbol* symbol = NULL;
 %type <ast> FuncDeclList FuncDecl ParamList Param ReturnStmt FuncCall ArgList VarDecl VarDeclList Stmt StmtList Expr LValue
 %type <ast> GlobalDeclList // Add this line
 %type <character> BinOp
+%type <ast> scope_enter scope_exit
 
 
 
@@ -161,31 +162,54 @@ FuncDeclList:
 ;
 
 
-
 FuncDecl:
     TYPE ID OPEN_PAREN ParamList CLOSE_PAREN SEMICOLON {
         printf("PARSER: Recognized function declaration: %s\n", $2);
-        $$ = createFuncDeclNode($1, $2, NULL, NULL, NULL); // No body, no return statement
+        // Add the function itself to the global scope
+        addSymbol(symTab, $2, $1, 1, NULL); // isFunction set to 1
+        $$ = createFuncDeclNode($1, $2, $4, NULL, NULL); // No body
     }
     | VOID ID OPEN_PAREN ParamList CLOSE_PAREN SEMICOLON {
         printf("PARSER: Recognized void function declaration: %s\n", $2);
-        $$ = createFuncDeclNode("void", $2, NULL, NULL, NULL); // No body
+        addSymbol(symTab, $2, "void", 1, NULL); // Add void function to global scope
+        $$ = createFuncDeclNode("void", $2, $4, NULL, NULL); // No body
     }
-    | TYPE ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE {
+    | TYPE ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE scope_enter StmtList ReturnStmt CLOSE_BRACE scope_exit {
         printf("PARSER: Recognized function declaration: %s\n", $2);
-        $$ = createFuncDeclNode($1, $2, $4, $7, $8); // Body present
+        addSymbol(symTab, $2, $1, 1, NULL); // Add function to global scope
+        $$ = createFuncDeclNode($1, $2, $4, $8, $9); // Body present
     }
-    | VOID ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE {
+    | VOID ID OPEN_PAREN ParamList CLOSE_PAREN OPEN_BRACE scope_enter StmtList CLOSE_BRACE scope_exit {
         printf("PARSER: Recognized void function declaration: %s\n", $2);
+        addSymbol(symTab, $2, "void", 1, NULL); // Add void function to global scope
         $$ = createFuncDeclNode("void", $2, $4, $7, NULL); // No return statement
     }
 ;
 
 
 
+
+scope_enter:
+    { 
+        enterScope(symTab); 
+        printf("Entering scope level %d\n", symTab->currentScopeLevel); // Debugging output
+        $$ = NULL; 
+    }
+;
+
+scope_exit:
+    { 
+        printf("Exiting scope level %d\n", symTab->currentScopeLevel); // Debugging output
+        exitScope(symTab); 
+        $$ = NULL; 
+    }
+;
+
 Param:
     TYPE ID {
-        $$ = createParamNode($1, $2);  // Assuming createParamNode returns a Param*
+        // Add each parameter to the symbol table at the current scope level
+        addSymbol(symTab, $2, $1, 0, NULL); // isFunction set to 0 for parameters
+        $$ = createParamNode($1, $2);       // Assuming createParamNode returns a Param*
     }
 ;
 
@@ -226,7 +250,7 @@ VarDeclList:
 
 VarDecl: TYPE ID SEMICOLON {
     printf("PARSER: Recognized variable declaration: %s\n", $2);
-    symbol = lookupSymbol(symTab, $2);
+    symbol = lookupSymbol(symTab, $2, 1);
     if (symbol != NULL) {
         printf("PARSER: Variable %s at line %d has already been declared - COMPILATION HALTED\n", $2, yylineno);
         exit(0);
@@ -234,14 +258,14 @@ VarDecl: TYPE ID SEMICOLON {
         $$ = createNode(NodeType_VarDecl);  // Use your node creation function
         $$->varDecl.varType = strdup($1);  // Store type
         $$->varDecl.varName = strdup($2);  // Store variable name
-        addSymbol(symTab, $2, $1, 0, NULL, NULL); // Add symbol to the symbol table
+        addSymbol(symTab, $2, $1, 0, NULL); // Add symbol to the symbol table
     }
 }
 ;
 
 | TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON {
     printf("PARSER: Recognized array declaration: %s[%d]\n", $2, $4);
-    symbol = lookupSymbol(symTab, $2);
+    symbol = lookupSymbol(symTab, $2, 1);
     if (symbol != NULL) {
         printf("PARSER: Array %s at line %d has already been declared - COMPILATION HALTED\n", $2, yylineno);
         exit(0);
@@ -251,7 +275,7 @@ VarDecl: TYPE ID SEMICOLON {
         $$->arrayDecl.varType = strdup($1);  // Can be "int" or "float"
         $$->arrayDecl.varName = strdup($2);
         $$->arrayDecl.size = $4;
-        addSymbol(symTab, $2, $1, 0, NULL, NULL);  // Add array symbol to symbol table
+        addSymbol(symTab, $2, $1, 0, NULL);  // Add array symbol to symbol table
     }
 }
 ;

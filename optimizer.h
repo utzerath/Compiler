@@ -41,7 +41,7 @@ bool constantPropagation(TAC** head);
 bool copyPropagation(TAC** head);
 
 // Perform dead code elimination (remove instructions whose results are not used)
-bool deadCodeElimination(TAC** head);
+bool deadCodeElimination(TAC** head, bool freeAll);
 bool isUsedLater(TAC* head, const char* varName);
 void safeStrReplace(char** target, const char* source);
 // Utility function to print the optimized TAC to a file

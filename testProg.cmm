@@ -1,11 +1,11 @@
-int main(int a) {
+int main(float p) {
     int l;
     int k;
-    l = 5;
+    k = 4;
     return l;
 }
-
-int lol() {
-    float p;
-    return 0;
+void test(int w)
+{
+    float r;
+    r = 1.01;
 }

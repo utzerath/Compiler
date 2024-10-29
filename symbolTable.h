@@ -8,6 +8,7 @@ typedef struct Symbol {
     int size;                    // Size (used for arrays)
     int scopeLevel;              // Scope level (0 = global, >0 = local)
     int isFunction;              // Flag to indicate if this symbol is a function
+    char* belongingFunction;
     struct SymbolTable* localSymbolTable;  // Local symbol table for function scope
     struct Symbol* next;         // Pointer to the next symbol (for handling collisions in hash table)
 } Symbol;
@@ -22,7 +23,7 @@ typedef struct SymbolTable {
 // Function declarations
 SymbolTable* createSymbolTable(int size);
 unsigned int hash(SymbolTable* table, char* name);
-void addSymbol(SymbolTable* table, char* name, char* type, int isFunction, SymbolTable* localSymbolTable);
+void addSymbol(SymbolTable* table, char* name, char* type, int isFunction, SymbolTable* localSymbolTable, char* belongingFunction);
 Symbol* lookupSymbol(SymbolTable* table, char* name, int currentScopeOnly);
 void freeSymbolTable(SymbolTable* table);
 void printSymbolTable(SymbolTable* table);

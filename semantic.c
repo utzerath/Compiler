@@ -31,9 +31,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
 
         case NodeType_VarDecl:
             if (lookupSymbol(symTab, node->varDecl.varName , 1) == NULL) {
-                addSymbol(symTab, node->varDecl.varName, node->varDecl.varType, 0, NULL);
-            } else {
-                fprintf(stderr, "Semantic error: Variable %s is already declared\n", node->varDecl.varName);
+                fprintf(stderr, "Semantic error: Variable %s is undeclared\n", node->varDecl.varName);
             }
             break;
 
@@ -63,7 +61,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
 
         case NodeType_ArrayDecl:
             if (lookupSymbol(symTab, node->arrayDecl.varName, 1) == NULL) {
-                addSymbol(symTab, node->arrayDecl.varName, node->arrayDecl.varType, 1, NULL);
+                addSymbol(symTab, node->arrayDecl.varName, node->arrayDecl.varType, 1, NULL, NULL);
             } else {
                 fprintf(stderr, "Semantic error: Array %s is already declared\n", node->arrayDecl.varName);
             }

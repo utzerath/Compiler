@@ -31,23 +31,25 @@ unsigned int hash(SymbolTable* table, char* name) {
     return hashval % table->size;
 }
 
-void addSymbol(SymbolTable* table, char* name, char* type, int isFunction, SymbolTable* localSymbolTable) {
-    // Avoid duplicates in the same scope
+void addSymbol(SymbolTable* table, char* name, char* type, int isFunction, SymbolTable* localSymbolTable, char* belongingFunction) {
+    // Check for duplicate symbols at the current scope
     if (lookupSymbol(table, name, 1) != NULL) {
-        fprintf(stderr, "Semantic error: Variable %s is already declared in the current scope\n", name);
+        fprintf(stderr, "Semantic error: Variable %s is already declared\n", name);
         return;
     }
 
-    // Create and add the new symbol with the correct scope level
+    // Add the new symbol
     Symbol* newSymbol = (Symbol*)malloc(sizeof(Symbol));
     newSymbol->name = strdup(name);
     newSymbol->type = strdup(type);
-    newSymbol->scopeLevel = table->currentScopeLevel;  // Assign the current scope level
+    newSymbol->scopeLevel = table->currentScopeLevel;
     newSymbol->isFunction = isFunction;
+    newSymbol->belongingFunction = belongingFunction ? strdup(belongingFunction) : NULL; // Default to NULL
     newSymbol->localSymbolTable = localSymbolTable;
     newSymbol->next = table->table[hash(table, name)];
     table->table[hash(table, name)] = newSymbol;
 }
+
 
 
 // Enhanced lookupSymbol to check only the current scope or global scope if needed
@@ -97,11 +99,24 @@ void freeSymbolTable(SymbolTable* table) {
     free(table->table);
     free(table);
 }
-
 void printSymbolTable(SymbolTable* table) {
     printf("----- SYMBOL TABLE -----\n");
 
-    // First, print global scope entries (scope level 0)
+    // Print all entries with full information for debugging
+    for (int i = 0; i < table->size; i++) {
+        Symbol* sym = table->table[i];
+        while (sym != NULL) {
+            printf("Symbol: %s, Type: %s, Scope Level: %d, Belonging Function: %s, Is Function: %s\n",
+                   sym->name, sym->type, sym->scopeLevel, 
+                   sym->belongingFunction ? sym->belongingFunction : "NULL",
+                   sym->isFunction ? "Yes" : "No");
+            sym = sym->next;
+        }
+    }
+
+    printf("\nFormatted Output:\n");
+
+    // Print global scope entries (scope level 0)
     printf("Global Scope (Level 0):\n");
     for (int i = 0; i < table->size; i++) {
         Symbol* sym = table->table[i];
@@ -109,26 +124,32 @@ void printSymbolTable(SymbolTable* table) {
             if (sym->scopeLevel == 0) {
                 if (sym->isFunction) {
                     printf("  Function %s with return type %s\n", sym->name, sym->type);
+                } else {
+                    printf("  Global Variable %s of type %s\n", sym->name, sym->type);
+                }
+            }
+            sym = sym->next;
+        }
+    }
 
-                    // Now print the function's scope (level 1) for this function specifically
-                    printf("\nScope Level 1 (%s):\n", sym->name);
+    // Print each function's local scope
+    for (int i = 0; i < table->size; i++) {
+        Symbol* sym = table->table[i];
+        while (sym != NULL) {
+            if (sym->isFunction && sym->scopeLevel == 0) {  // For each function in global scope
+                printf("\nScope Level 1 (%s):\n", sym->name);
 
-                    // Traverse the entire table to find symbols at level 1
-                    int isFirstLocal = 1; // Track whether we’re printing parameters first
-                    for (int j = 0; j < table->size; j++) {
-                        Symbol* localSym = table->table[j];
-                        while (localSym != NULL) {
-                            // Look only at symbols at scope level 1 (function scope level)
-                            if (localSym->scopeLevel == 1) {
-                                if (isFirstLocal) {
-                                    printf("  Parameter %s of type %s\n", localSym->name, localSym->type);
-                                    isFirstLocal = 0;
-                                } else {
-                                    printf("  Variable %s of type %s\n", localSym->name, localSym->type);
-                                }
-                            }
-                            localSym = localSym->next;
+                // Print parameters and local variables for this function
+                for (int j = 0; j < table->size; j++) {
+                    Symbol* localSym = table->table[j];
+                    while (localSym != NULL) {
+                        if (localSym->scopeLevel == 1 && localSym->belongingFunction != NULL &&
+                            strcmp(localSym->belongingFunction, sym->name) == 0) {
+                            printf("  %s %s of type %s\n",
+                                   localSym->isFunction ? "Parameter" : "Variable",
+                                   localSym->name, localSym->type);
                         }
+                        localSym = localSym->next;
                     }
                 }
             }

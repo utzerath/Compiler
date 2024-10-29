@@ -1,6 +1,6 @@
 Rules never reduced
 
-   29 VarDeclList: /* empty */
+   30 VarDeclList: /* empty */
 
 
 State 0 conflicts: 5 shift/reduce, 5 reduce/reduce
@@ -9,7 +9,7 @@ State 13 conflicts: 1 reduce/reduce
 State 14 conflicts: 1 shift/reduce
 State 15 conflicts: 1 reduce/reduce
 State 16 conflicts: 4 shift/reduce, 5 reduce/reduce
-State 70 conflicts: 4 shift/reduce
+State 71 conflicts: 4 shift/reduce
 
 
 Grammar
@@ -40,86 +40,88 @@ Grammar
    15 FuncDeclList: /* empty */
    16             | FuncDecl FuncDeclList
 
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   18         | VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
-   20         | VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+   17 SetFunctionName: ID
 
-   21 scope_enter: /* empty */
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   19         | VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   21         | VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
 
-   22 scope_exit: /* empty */
+   22 scope_enter: /* empty */
 
-   23 Param: TYPE ID
+   23 scope_exit: /* empty */
 
-   24 ParamList: /* empty */
-   25          | Param
-   26          | Param COMMA ParamList
+   24 Param: TYPE ID
 
-   27 ReturnStmt: RETURN Expr SEMICOLON
-   28           | /* empty */
+   25 ParamList: /* empty */
+   26          | Param
+   27          | Param COMMA ParamList
 
-   29 VarDeclList: /* empty */
-   30            | VarDecl VarDeclList
+   28 ReturnStmt: RETURN Expr SEMICOLON
+   29           | /* empty */
 
-   31 VarDecl: TYPE ID SEMICOLON
-   32        | TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
+   30 VarDeclList: /* empty */
+   31            | VarDecl VarDeclList
 
-   33 StmtList: /* empty */
-   34         | Stmt StmtList
-   35         | VarDecl StmtList
+   32 VarDecl: TYPE ID SEMICOLON
+   33        | TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
 
-   36 Stmt: LValue EQ Expr SEMICOLON
-   37     | WRITE Expr SEMICOLON
-   38     | FuncCall SEMICOLON
-   39     | OPEN_BRACE StmtList CLOSE_BRACE
+   34 StmtList: /* empty */
+   35         | Stmt StmtList
+   36         | VarDecl StmtList
 
-   40 LValue: ID
-   41       | ID OPEN_BRACKET Expr CLOSE_BRACKET
+   37 Stmt: LValue EQ Expr SEMICOLON
+   38     | WRITE Expr SEMICOLON
+   39     | FuncCall SEMICOLON
+   40     | OPEN_BRACE StmtList CLOSE_BRACE
 
-   42 Expr: Expr BinOp Expr
-   43     | NUMBER
-   44     | FLOAT_LITERAL
-   45     | ID
-   46     | FuncCall
-   47     | ID OPEN_BRACKET Expr CLOSE_BRACKET
-   48     | OPEN_PAREN Expr CLOSE_PAREN
+   41 LValue: ID
+   42       | ID OPEN_BRACKET Expr CLOSE_BRACKET
 
-   49 FuncCall: ID OPEN_PAREN ArgList CLOSE_PAREN
+   43 Expr: Expr BinOp Expr
+   44     | NUMBER
+   45     | FLOAT_LITERAL
+   46     | ID
+   47     | FuncCall
+   48     | ID OPEN_BRACKET Expr CLOSE_BRACKET
+   49     | OPEN_PAREN Expr CLOSE_PAREN
 
-   50 ArgList: /* empty */
-   51        | Expr
-   52        | Expr COMMA ArgList
+   50 FuncCall: ID OPEN_PAREN ArgList CLOSE_PAREN
 
-   53 BinOp: PLUS
-   54      | MINUS
-   55      | MULTIPLY
-   56      | DIVIDE
+   51 ArgList: /* empty */
+   52        | Expr
+   53        | Expr COMMA ArgList
+
+   54 BinOp: PLUS
+   55      | MINUS
+   56      | MULTIPLY
+   57      | DIVIDE
 
 
 Terminals, with rules where they appear
 
 $end (0) 0
 error (256)
-TYPE (258) 17 19 23 31 32
-NUMBER (259) 32 43
-FLOAT_LITERAL (260) 44
-SEMICOLON (261) 17 18 27 31 32 36 37 38
-EQ (262) 36
-PLUS (263) 53
-MINUS (264) 54
-MULTIPLY (265) 55
-DIVIDE (266) 56
-WRITE (267) 37
-OPEN_BRACE (268) 19 20 39
-CLOSE_BRACE (269) 19 20 39
-OPEN_PAREN (270) 17 18 19 20 48 49
-CLOSE_PAREN (271) 17 18 19 20 48 49
-ID (272) 17 18 19 20 23 31 32 40 41 45 47 49
-OPEN_BRACKET (273) 32 41 47
-CLOSE_BRACKET (274) 32 41 47
-RETURN (275) 27
-VOID (276) 18 20
-COMMA (277) 26 52
+TYPE (258) 18 20 24 32 33
+NUMBER (259) 33 44
+FLOAT_LITERAL (260) 45
+SEMICOLON (261) 18 19 28 32 33 37 38 39
+EQ (262) 37
+PLUS (263) 54
+MINUS (264) 55
+MULTIPLY (265) 56
+DIVIDE (266) 57
+WRITE (267) 38
+OPEN_BRACE (268) 20 21 40
+CLOSE_BRACE (269) 20 21 40
+OPEN_PAREN (270) 18 19 20 21 49 50
+CLOSE_PAREN (271) 18 19 20 21 49 50
+ID (272) 17 24 32 33 41 42 46 48 50
+OPEN_BRACKET (273) 33 42 48
+CLOSE_BRACKET (274) 33 42 48
+RETURN (275) 28
+VOID (276) 19 21
+COMMA (277) 27 53
 
 
 Nonterminals, with rules where they appear
@@ -142,37 +144,39 @@ GlobalDeclList (30)
     on left: 13 14, on right: 7 14
 FuncDeclList (31)
     on left: 15 16, on right: 7 8 11 16
-FuncDecl (32)
-    on left: 17 18 19 20, on right: 16
-scope_enter (33)
-    on left: 21, on right: 17 18 19 20
-scope_exit (34)
-    on left: 22, on right: 17 18 19 20
-Param (35)
-    on left: 23, on right: 25 26
-ParamList (36)
-    on left: 24 25 26, on right: 17 18 19 20 26
-ReturnStmt (37)
-    on left: 27 28, on right: 19
-VarDeclList (38)
-    on left: 29 30, on right: 9 10 30
-VarDecl (39)
-    on left: 31 32, on right: 14 30 35
-StmtList (40)
-    on left: 33 34 35, on right: 7 8 9 12 19 20 34 35 39
-Stmt (41)
-    on left: 36 37 38 39, on right: 34
-LValue (42)
-    on left: 40 41, on right: 36
-Expr (43)
-    on left: 42 43 44 45 46 47 48, on right: 27 36 37 41 42 47 48 51
-    52
-FuncCall (44)
-    on left: 49, on right: 38 46
-ArgList (45)
-    on left: 50 51 52, on right: 49 52
-BinOp (46)
-    on left: 53 54 55 56, on right: 42
+SetFunctionName (32)
+    on left: 17, on right: 18 19 20 21
+FuncDecl (33)
+    on left: 18 19 20 21, on right: 16
+scope_enter (34)
+    on left: 22, on right: 18 19 20 21
+scope_exit (35)
+    on left: 23, on right: 20 21
+Param (36)
+    on left: 24, on right: 26 27
+ParamList (37)
+    on left: 25 26 27, on right: 18 19 20 21 27
+ReturnStmt (38)
+    on left: 28 29, on right: 20
+VarDeclList (39)
+    on left: 30 31, on right: 9 10 31
+VarDecl (40)
+    on left: 32 33, on right: 14 31 36
+StmtList (41)
+    on left: 34 35 36, on right: 7 8 9 12 20 21 35 36 40
+Stmt (42)
+    on left: 37 38 39 40, on right: 35
+LValue (43)
+    on left: 41 42, on right: 37
+Expr (44)
+    on left: 43 44 45 46 47 48 49, on right: 28 37 38 42 43 48 49 52
+    53
+FuncCall (45)
+    on left: 50, on right: 39 47
+ArgList (46)
+    on left: 51 52 53, on right: 50 53
+BinOp (47)
+    on left: 54 55 56 57, on right: 43
 
 
 state 0
@@ -188,20 +192,20 @@ state 0
     $end        reduce using rule 6 (Program)
     $end        [reduce using rule 13 (GlobalDeclList)]
     $end        [reduce using rule 15 (FuncDeclList)]
-    $end        [reduce using rule 29 (VarDeclList)]
-    $end        [reduce using rule 33 (StmtList)]
+    $end        [reduce using rule 30 (VarDeclList)]
+    $end        [reduce using rule 34 (StmtList)]
     TYPE        [reduce using rule 13 (GlobalDeclList)]
     TYPE        [reduce using rule 15 (FuncDeclList)]
-    TYPE        [reduce using rule 29 (VarDeclList)]
+    TYPE        [reduce using rule 30 (VarDeclList)]
     WRITE       [reduce using rule 13 (GlobalDeclList)]
     WRITE       [reduce using rule 15 (FuncDeclList)]
-    WRITE       [reduce using rule 29 (VarDeclList)]
+    WRITE       [reduce using rule 30 (VarDeclList)]
     OPEN_BRACE  [reduce using rule 13 (GlobalDeclList)]
     OPEN_BRACE  [reduce using rule 15 (FuncDeclList)]
-    OPEN_BRACE  [reduce using rule 29 (VarDeclList)]
+    OPEN_BRACE  [reduce using rule 30 (VarDeclList)]
     ID          [reduce using rule 13 (GlobalDeclList)]
     ID          [reduce using rule 15 (FuncDeclList)]
-    ID          [reduce using rule 29 (VarDeclList)]
+    ID          [reduce using rule 30 (VarDeclList)]
     VOID        [reduce using rule 13 (GlobalDeclList)]
     $default    reduce using rule 6 (Program)
 
@@ -224,40 +228,42 @@ state 0
 
 state 1
 
-   17 FuncDecl: TYPE . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
-   31 VarDecl: TYPE . ID SEMICOLON
-   32        | TYPE . ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
+   18 FuncDecl: TYPE . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   32 VarDecl: TYPE . ID SEMICOLON
+   33        | TYPE . ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
 
     ID  shift, and go to state 21
+
+    SetFunctionName  go to state 22
 
 
 state 2
 
-   37 Stmt: WRITE . Expr SEMICOLON
+   38 Stmt: WRITE . Expr SEMICOLON
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
 
-    Expr      go to state 26
-    FuncCall  go to state 27
+    Expr      go to state 27
+    FuncCall  go to state 28
 
 
 state 3
 
-   39 Stmt: OPEN_BRACE . StmtList CLOSE_BRACE
+   40 Stmt: OPEN_BRACE . StmtList CLOSE_BRACE
 
-    TYPE        shift, and go to state 28
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
-    StmtList  go to state 30
+    VarDecl   go to state 30
+    StmtList  go to state 31
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
@@ -265,29 +271,31 @@ state 3
 
 state 4
 
-   40 LValue: ID .
-   41       | ID . OPEN_BRACKET Expr CLOSE_BRACKET
-   49 FuncCall: ID . OPEN_PAREN ArgList CLOSE_PAREN
+   41 LValue: ID .
+   42       | ID . OPEN_BRACKET Expr CLOSE_BRACKET
+   50 FuncCall: ID . OPEN_PAREN ArgList CLOSE_PAREN
 
-    OPEN_PAREN    shift, and go to state 31
-    OPEN_BRACKET  shift, and go to state 32
+    OPEN_PAREN    shift, and go to state 32
+    OPEN_BRACKET  shift, and go to state 33
 
-    $default  reduce using rule 40 (LValue)
+    $default  reduce using rule 41 (LValue)
 
 
 state 5
 
-   18 FuncDecl: VOID . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   20         | VOID . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+   19 FuncDecl: VOID . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   21         | VOID . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
 
-    ID  shift, and go to state 33
+    ID  shift, and go to state 34
+
+    SetFunctionName  go to state 35
 
 
 state 6
 
     0 $accept: Program . $end
 
-    $end  shift, and go to state 34
+    $end  shift, and go to state 36
 
 
 state 7
@@ -329,42 +337,7 @@ state 12
 
     7 CompleteProgram: GlobalDeclList . FuncDeclList StmtList
 
-    TYPE  shift, and go to state 35
-    VOID  shift, and go to state 5
-
-    TYPE      [reduce using rule 15 (FuncDeclList)]
-    $default  reduce using rule 15 (FuncDeclList)
-
-    FuncDeclList  go to state 36
-    FuncDecl      go to state 14
-
-
-state 13
-
-    8 CompleteProgram: FuncDeclList . StmtList
-   11 OnlyFuncs: FuncDeclList .
-
-    TYPE        shift, and go to state 28
-    WRITE       shift, and go to state 2
-    OPEN_BRACE  shift, and go to state 3
-    ID          shift, and go to state 4
-
-    $end      reduce using rule 11 (OnlyFuncs)
-    $end      [reduce using rule 33 (StmtList)]
-    $default  reduce using rule 11 (OnlyFuncs)
-
-    VarDecl   go to state 29
-    StmtList  go to state 37
-    Stmt      go to state 18
-    LValue    go to state 19
-    FuncCall  go to state 20
-
-
-state 14
-
-   16 FuncDeclList: FuncDecl . FuncDeclList
-
-    TYPE  shift, and go to state 35
+    TYPE  shift, and go to state 37
     VOID  shift, and go to state 5
 
     TYPE      [reduce using rule 15 (FuncDeclList)]
@@ -374,22 +347,57 @@ state 14
     FuncDecl      go to state 14
 
 
+state 13
+
+    8 CompleteProgram: FuncDeclList . StmtList
+   11 OnlyFuncs: FuncDeclList .
+
+    TYPE        shift, and go to state 29
+    WRITE       shift, and go to state 2
+    OPEN_BRACE  shift, and go to state 3
+    ID          shift, and go to state 4
+
+    $end      reduce using rule 11 (OnlyFuncs)
+    $end      [reduce using rule 34 (StmtList)]
+    $default  reduce using rule 11 (OnlyFuncs)
+
+    VarDecl   go to state 30
+    StmtList  go to state 39
+    Stmt      go to state 18
+    LValue    go to state 19
+    FuncCall  go to state 20
+
+
+state 14
+
+   16 FuncDeclList: FuncDecl . FuncDeclList
+
+    TYPE  shift, and go to state 37
+    VOID  shift, and go to state 5
+
+    TYPE      [reduce using rule 15 (FuncDeclList)]
+    $default  reduce using rule 15 (FuncDeclList)
+
+    FuncDeclList  go to state 40
+    FuncDecl      go to state 14
+
+
 state 15
 
     9 PartialProgram: VarDeclList . StmtList
    10 OnlyVarDecls: VarDeclList .
 
-    TYPE        shift, and go to state 28
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
     $end      reduce using rule 10 (OnlyVarDecls)
-    $end      [reduce using rule 33 (StmtList)]
+    $end      [reduce using rule 34 (StmtList)]
     $default  reduce using rule 10 (OnlyVarDecls)
 
-    VarDecl   go to state 29
-    StmtList  go to state 39
+    VarDecl   go to state 30
+    StmtList  go to state 41
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
@@ -398,31 +406,31 @@ state 15
 state 16
 
    14 GlobalDeclList: VarDecl . GlobalDeclList
-   30 VarDeclList: VarDecl . VarDeclList
-   35 StmtList: VarDecl . StmtList
+   31 VarDeclList: VarDecl . VarDeclList
+   36 StmtList: VarDecl . StmtList
 
-    TYPE        shift, and go to state 28
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
     $end        reduce using rule 13 (GlobalDeclList)
-    $end        [reduce using rule 29 (VarDeclList)]
-    $end        [reduce using rule 33 (StmtList)]
+    $end        [reduce using rule 30 (VarDeclList)]
+    $end        [reduce using rule 34 (StmtList)]
     TYPE        [reduce using rule 13 (GlobalDeclList)]
-    TYPE        [reduce using rule 29 (VarDeclList)]
+    TYPE        [reduce using rule 30 (VarDeclList)]
     WRITE       [reduce using rule 13 (GlobalDeclList)]
-    WRITE       [reduce using rule 29 (VarDeclList)]
+    WRITE       [reduce using rule 30 (VarDeclList)]
     OPEN_BRACE  [reduce using rule 13 (GlobalDeclList)]
-    OPEN_BRACE  [reduce using rule 29 (VarDeclList)]
+    OPEN_BRACE  [reduce using rule 30 (VarDeclList)]
     ID          [reduce using rule 13 (GlobalDeclList)]
-    ID          [reduce using rule 29 (VarDeclList)]
+    ID          [reduce using rule 30 (VarDeclList)]
     $default    reduce using rule 13 (GlobalDeclList)
 
-    GlobalDeclList  go to state 40
-    VarDeclList     go to state 41
+    GlobalDeclList  go to state 42
+    VarDeclList     go to state 43
     VarDecl         go to state 16
-    StmtList        go to state 42
+    StmtList        go to state 44
     Stmt            go to state 18
     LValue          go to state 19
     FuncCall        go to state 20
@@ -437,17 +445,17 @@ state 17
 
 state 18
 
-   34 StmtList: Stmt . StmtList
+   35 StmtList: Stmt . StmtList
 
-    TYPE        shift, and go to state 28
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
-    StmtList  go to state 43
+    VarDecl   go to state 30
+    StmtList  go to state 45
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
@@ -455,823 +463,814 @@ state 18
 
 state 19
 
-   36 Stmt: LValue . EQ Expr SEMICOLON
+   37 Stmt: LValue . EQ Expr SEMICOLON
 
-    EQ  shift, and go to state 44
+    EQ  shift, and go to state 46
 
 
 state 20
 
-   38 Stmt: FuncCall . SEMICOLON
+   39 Stmt: FuncCall . SEMICOLON
 
-    SEMICOLON  shift, and go to state 45
+    SEMICOLON  shift, and go to state 47
 
 
 state 21
 
-   17 FuncDecl: TYPE ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
-   31 VarDecl: TYPE ID . SEMICOLON
-   32        | TYPE ID . OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
+   17 SetFunctionName: ID .
+   32 VarDecl: TYPE ID . SEMICOLON
+   33        | TYPE ID . OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
 
-    SEMICOLON     shift, and go to state 46
-    OPEN_PAREN    shift, and go to state 47
-    OPEN_BRACKET  shift, and go to state 48
+    SEMICOLON     shift, and go to state 48
+    OPEN_BRACKET  shift, and go to state 49
+
+    $default  reduce using rule 17 (SetFunctionName)
 
 
 state 22
 
-   43 Expr: NUMBER .
+   18 FuncDecl: TYPE SetFunctionName . OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE SetFunctionName . OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
 
-    $default  reduce using rule 43 (Expr)
+    OPEN_PAREN  shift, and go to state 50
 
 
 state 23
 
-   44 Expr: FLOAT_LITERAL .
+   44 Expr: NUMBER .
 
     $default  reduce using rule 44 (Expr)
 
 
 state 24
 
-   48 Expr: OPEN_PAREN . Expr CLOSE_PAREN
-
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    Expr      go to state 49
-    FuncCall  go to state 27
-
-
-state 25
-
-   45 Expr: ID .
-   47     | ID . OPEN_BRACKET Expr CLOSE_BRACKET
-   49 FuncCall: ID . OPEN_PAREN ArgList CLOSE_PAREN
-
-    OPEN_PAREN    shift, and go to state 31
-    OPEN_BRACKET  shift, and go to state 50
+   45 Expr: FLOAT_LITERAL .
 
     $default  reduce using rule 45 (Expr)
 
 
+state 25
+
+   49 Expr: OPEN_PAREN . Expr CLOSE_PAREN
+
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 51
+    FuncCall  go to state 28
+
+
 state 26
 
-   37 Stmt: WRITE Expr . SEMICOLON
-   42 Expr: Expr . BinOp Expr
+   46 Expr: ID .
+   48     | ID . OPEN_BRACKET Expr CLOSE_BRACKET
+   50 FuncCall: ID . OPEN_PAREN ArgList CLOSE_PAREN
 
-    SEMICOLON  shift, and go to state 51
-    PLUS       shift, and go to state 52
-    MINUS      shift, and go to state 53
-    MULTIPLY   shift, and go to state 54
-    DIVIDE     shift, and go to state 55
-
-    BinOp  go to state 56
-
-
-state 27
-
-   46 Expr: FuncCall .
+    OPEN_PAREN    shift, and go to state 32
+    OPEN_BRACKET  shift, and go to state 52
 
     $default  reduce using rule 46 (Expr)
 
 
+state 27
+
+   38 Stmt: WRITE Expr . SEMICOLON
+   43 Expr: Expr . BinOp Expr
+
+    SEMICOLON  shift, and go to state 53
+    PLUS       shift, and go to state 54
+    MINUS      shift, and go to state 55
+    MULTIPLY   shift, and go to state 56
+    DIVIDE     shift, and go to state 57
+
+    BinOp  go to state 58
+
+
 state 28
 
-   31 VarDecl: TYPE . ID SEMICOLON
-   32        | TYPE . ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
+   47 Expr: FuncCall .
 
-    ID  shift, and go to state 57
+    $default  reduce using rule 47 (Expr)
 
 
 state 29
 
-   35 StmtList: VarDecl . StmtList
+   32 VarDecl: TYPE . ID SEMICOLON
+   33        | TYPE . ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
 
-    TYPE        shift, and go to state 28
+    ID  shift, and go to state 59
+
+
+state 30
+
+   36 StmtList: VarDecl . StmtList
+
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
-    StmtList  go to state 42
+    VarDecl   go to state 30
+    StmtList  go to state 44
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
 
 
-state 30
-
-   39 Stmt: OPEN_BRACE StmtList . CLOSE_BRACE
-
-    CLOSE_BRACE  shift, and go to state 58
-
-
 state 31
 
-   49 FuncCall: ID OPEN_PAREN . ArgList CLOSE_PAREN
+   40 Stmt: OPEN_BRACE StmtList . CLOSE_BRACE
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    $default  reduce using rule 50 (ArgList)
-
-    Expr      go to state 59
-    FuncCall  go to state 27
-    ArgList   go to state 60
+    CLOSE_BRACE  shift, and go to state 60
 
 
 state 32
 
-   41 LValue: ID OPEN_BRACKET . Expr CLOSE_BRACKET
+   50 FuncCall: ID OPEN_PAREN . ArgList CLOSE_PAREN
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    $default  reduce using rule 51 (ArgList)
 
     Expr      go to state 61
-    FuncCall  go to state 27
+    FuncCall  go to state 28
+    ArgList   go to state 62
 
 
 state 33
 
-   18 FuncDecl: VOID ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   20         | VOID ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+   42 LValue: ID OPEN_BRACKET . Expr CLOSE_BRACKET
 
-    OPEN_PAREN  shift, and go to state 62
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 63
+    FuncCall  go to state 28
 
 
 state 34
+
+   17 SetFunctionName: ID .
+
+    $default  reduce using rule 17 (SetFunctionName)
+
+
+state 35
+
+   19 FuncDecl: VOID SetFunctionName . OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   21         | VOID SetFunctionName . OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+
+    OPEN_PAREN  shift, and go to state 64
+
+
+state 36
 
     0 $accept: Program $end .
 
     $default  accept
 
 
-state 35
+state 37
 
-   17 FuncDecl: TYPE . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE . ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   18 FuncDecl: TYPE . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE . SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
 
-    ID  shift, and go to state 63
+    ID  shift, and go to state 34
+
+    SetFunctionName  go to state 22
 
 
-state 36
+state 38
 
     7 CompleteProgram: GlobalDeclList FuncDeclList . StmtList
 
-    TYPE        shift, and go to state 28
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
-    StmtList  go to state 64
+    VarDecl   go to state 30
+    StmtList  go to state 65
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
 
 
-state 37
+state 39
 
     8 CompleteProgram: FuncDeclList StmtList .
 
     $default  reduce using rule 8 (CompleteProgram)
 
 
-state 38
+state 40
 
    16 FuncDeclList: FuncDecl FuncDeclList .
 
     $default  reduce using rule 16 (FuncDeclList)
 
 
-state 39
+state 41
 
     9 PartialProgram: VarDeclList StmtList .
 
     $default  reduce using rule 9 (PartialProgram)
 
 
-state 40
+state 42
 
    14 GlobalDeclList: VarDecl GlobalDeclList .
 
     $default  reduce using rule 14 (GlobalDeclList)
 
 
-state 41
-
-   30 VarDeclList: VarDecl VarDeclList .
-
-    $default  reduce using rule 30 (VarDeclList)
-
-
-state 42
-
-   35 StmtList: VarDecl StmtList .
-
-    $default  reduce using rule 35 (StmtList)
-
-
 state 43
 
-   34 StmtList: Stmt StmtList .
+   31 VarDeclList: VarDecl VarDeclList .
 
-    $default  reduce using rule 34 (StmtList)
+    $default  reduce using rule 31 (VarDeclList)
 
 
 state 44
 
-   36 Stmt: LValue EQ . Expr SEMICOLON
+   36 StmtList: VarDecl StmtList .
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    Expr      go to state 65
-    FuncCall  go to state 27
+    $default  reduce using rule 36 (StmtList)
 
 
 state 45
 
-   38 Stmt: FuncCall SEMICOLON .
+   35 StmtList: Stmt StmtList .
 
-    $default  reduce using rule 38 (Stmt)
+    $default  reduce using rule 35 (StmtList)
 
 
 state 46
 
-   31 VarDecl: TYPE ID SEMICOLON .
+   37 Stmt: LValue EQ . Expr SEMICOLON
 
-    $default  reduce using rule 31 (VarDecl)
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 66
+    FuncCall  go to state 28
 
 
 state 47
 
-   17 FuncDecl: TYPE ID OPEN_PAREN . scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID OPEN_PAREN . scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
-
-    $default  reduce using rule 21 (scope_enter)
-
-    scope_enter  go to state 66
-
-
-state 48
-
-   32 VarDecl: TYPE ID OPEN_BRACKET . NUMBER CLOSE_BRACKET SEMICOLON
-
-    NUMBER  shift, and go to state 67
-
-
-state 49
-
-   42 Expr: Expr . BinOp Expr
-   48     | OPEN_PAREN Expr . CLOSE_PAREN
-
-    PLUS         shift, and go to state 52
-    MINUS        shift, and go to state 53
-    MULTIPLY     shift, and go to state 54
-    DIVIDE       shift, and go to state 55
-    CLOSE_PAREN  shift, and go to state 68
-
-    BinOp  go to state 56
-
-
-state 50
-
-   47 Expr: ID OPEN_BRACKET . Expr CLOSE_BRACKET
-
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    Expr      go to state 69
-    FuncCall  go to state 27
-
-
-state 51
-
-   37 Stmt: WRITE Expr SEMICOLON .
-
-    $default  reduce using rule 37 (Stmt)
-
-
-state 52
-
-   53 BinOp: PLUS .
-
-    $default  reduce using rule 53 (BinOp)
-
-
-state 53
-
-   54 BinOp: MINUS .
-
-    $default  reduce using rule 54 (BinOp)
-
-
-state 54
-
-   55 BinOp: MULTIPLY .
-
-    $default  reduce using rule 55 (BinOp)
-
-
-state 55
-
-   56 BinOp: DIVIDE .
-
-    $default  reduce using rule 56 (BinOp)
-
-
-state 56
-
-   42 Expr: Expr BinOp . Expr
-
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    Expr      go to state 70
-    FuncCall  go to state 27
-
-
-state 57
-
-   31 VarDecl: TYPE ID . SEMICOLON
-   32        | TYPE ID . OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
-
-    SEMICOLON     shift, and go to state 46
-    OPEN_BRACKET  shift, and go to state 48
-
-
-state 58
-
-   39 Stmt: OPEN_BRACE StmtList CLOSE_BRACE .
+   39 Stmt: FuncCall SEMICOLON .
 
     $default  reduce using rule 39 (Stmt)
 
 
+state 48
+
+   32 VarDecl: TYPE ID SEMICOLON .
+
+    $default  reduce using rule 32 (VarDecl)
+
+
+state 49
+
+   33 VarDecl: TYPE ID OPEN_BRACKET . NUMBER CLOSE_BRACKET SEMICOLON
+
+    NUMBER  shift, and go to state 67
+
+
+state 50
+
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN . scope_enter ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE SetFunctionName OPEN_PAREN . scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+
+    $default  reduce using rule 22 (scope_enter)
+
+    scope_enter  go to state 68
+
+
+state 51
+
+   43 Expr: Expr . BinOp Expr
+   49     | OPEN_PAREN Expr . CLOSE_PAREN
+
+    PLUS         shift, and go to state 54
+    MINUS        shift, and go to state 55
+    MULTIPLY     shift, and go to state 56
+    DIVIDE       shift, and go to state 57
+    CLOSE_PAREN  shift, and go to state 69
+
+    BinOp  go to state 58
+
+
+state 52
+
+   48 Expr: ID OPEN_BRACKET . Expr CLOSE_BRACKET
+
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 70
+    FuncCall  go to state 28
+
+
+state 53
+
+   38 Stmt: WRITE Expr SEMICOLON .
+
+    $default  reduce using rule 38 (Stmt)
+
+
+state 54
+
+   54 BinOp: PLUS .
+
+    $default  reduce using rule 54 (BinOp)
+
+
+state 55
+
+   55 BinOp: MINUS .
+
+    $default  reduce using rule 55 (BinOp)
+
+
+state 56
+
+   56 BinOp: MULTIPLY .
+
+    $default  reduce using rule 56 (BinOp)
+
+
+state 57
+
+   57 BinOp: DIVIDE .
+
+    $default  reduce using rule 57 (BinOp)
+
+
+state 58
+
+   43 Expr: Expr BinOp . Expr
+
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 71
+    FuncCall  go to state 28
+
+
 state 59
 
-   42 Expr: Expr . BinOp Expr
-   51 ArgList: Expr .
-   52        | Expr . COMMA ArgList
+   32 VarDecl: TYPE ID . SEMICOLON
+   33        | TYPE ID . OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON
 
-    PLUS      shift, and go to state 52
-    MINUS     shift, and go to state 53
-    MULTIPLY  shift, and go to state 54
-    DIVIDE    shift, and go to state 55
-    COMMA     shift, and go to state 71
-
-    $default  reduce using rule 51 (ArgList)
-
-    BinOp  go to state 56
+    SEMICOLON     shift, and go to state 48
+    OPEN_BRACKET  shift, and go to state 49
 
 
 state 60
 
-   49 FuncCall: ID OPEN_PAREN ArgList . CLOSE_PAREN
+   40 Stmt: OPEN_BRACE StmtList CLOSE_BRACE .
 
-    CLOSE_PAREN  shift, and go to state 72
+    $default  reduce using rule 40 (Stmt)
 
 
 state 61
 
-   41 LValue: ID OPEN_BRACKET Expr . CLOSE_BRACKET
-   42 Expr: Expr . BinOp Expr
+   43 Expr: Expr . BinOp Expr
+   52 ArgList: Expr .
+   53        | Expr . COMMA ArgList
 
-    PLUS           shift, and go to state 52
-    MINUS          shift, and go to state 53
-    MULTIPLY       shift, and go to state 54
-    DIVIDE         shift, and go to state 55
-    CLOSE_BRACKET  shift, and go to state 73
+    PLUS      shift, and go to state 54
+    MINUS     shift, and go to state 55
+    MULTIPLY  shift, and go to state 56
+    DIVIDE    shift, and go to state 57
+    COMMA     shift, and go to state 72
 
-    BinOp  go to state 56
+    $default  reduce using rule 52 (ArgList)
+
+    BinOp  go to state 58
 
 
 state 62
 
-   18 FuncDecl: VOID ID OPEN_PAREN . scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   20         | VOID ID OPEN_PAREN . scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+   50 FuncCall: ID OPEN_PAREN ArgList . CLOSE_PAREN
 
-    $default  reduce using rule 21 (scope_enter)
-
-    scope_enter  go to state 74
+    CLOSE_PAREN  shift, and go to state 73
 
 
 state 63
 
-   17 FuncDecl: TYPE ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID . OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   42 LValue: ID OPEN_BRACKET Expr . CLOSE_BRACKET
+   43 Expr: Expr . BinOp Expr
 
-    OPEN_PAREN  shift, and go to state 47
+    PLUS           shift, and go to state 54
+    MINUS          shift, and go to state 55
+    MULTIPLY       shift, and go to state 56
+    DIVIDE         shift, and go to state 57
+    CLOSE_BRACKET  shift, and go to state 74
+
+    BinOp  go to state 58
 
 
 state 64
+
+   19 FuncDecl: VOID SetFunctionName OPEN_PAREN . scope_enter ParamList CLOSE_PAREN SEMICOLON
+   21         | VOID SetFunctionName OPEN_PAREN . scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+
+    $default  reduce using rule 22 (scope_enter)
+
+    scope_enter  go to state 75
+
+
+state 65
 
     7 CompleteProgram: GlobalDeclList FuncDeclList StmtList .
 
     $default  reduce using rule 7 (CompleteProgram)
 
 
-state 65
-
-   36 Stmt: LValue EQ Expr . SEMICOLON
-   42 Expr: Expr . BinOp Expr
-
-    SEMICOLON  shift, and go to state 75
-    PLUS       shift, and go to state 52
-    MINUS      shift, and go to state 53
-    MULTIPLY   shift, and go to state 54
-    DIVIDE     shift, and go to state 55
-
-    BinOp  go to state 56
-
-
 state 66
 
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter . ParamList CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID OPEN_PAREN scope_enter . ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   37 Stmt: LValue EQ Expr . SEMICOLON
+   43 Expr: Expr . BinOp Expr
 
-    TYPE  shift, and go to state 76
+    SEMICOLON  shift, and go to state 76
+    PLUS       shift, and go to state 54
+    MINUS      shift, and go to state 55
+    MULTIPLY   shift, and go to state 56
+    DIVIDE     shift, and go to state 57
 
-    $default  reduce using rule 24 (ParamList)
-
-    Param      go to state 77
-    ParamList  go to state 78
+    BinOp  go to state 58
 
 
 state 67
 
-   32 VarDecl: TYPE ID OPEN_BRACKET NUMBER . CLOSE_BRACKET SEMICOLON
+   33 VarDecl: TYPE ID OPEN_BRACKET NUMBER . CLOSE_BRACKET SEMICOLON
 
-    CLOSE_BRACKET  shift, and go to state 79
+    CLOSE_BRACKET  shift, and go to state 77
 
 
 state 68
 
-   48 Expr: OPEN_PAREN Expr CLOSE_PAREN .
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter . ParamList CLOSE_PAREN SEMICOLON
+   20         | TYPE SetFunctionName OPEN_PAREN scope_enter . ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
 
-    $default  reduce using rule 48 (Expr)
+    TYPE  shift, and go to state 78
+
+    $default  reduce using rule 25 (ParamList)
+
+    Param      go to state 79
+    ParamList  go to state 80
 
 
 state 69
 
-   42 Expr: Expr . BinOp Expr
-   47     | ID OPEN_BRACKET Expr . CLOSE_BRACKET
+   49 Expr: OPEN_PAREN Expr CLOSE_PAREN .
 
-    PLUS           shift, and go to state 52
-    MINUS          shift, and go to state 53
-    MULTIPLY       shift, and go to state 54
-    DIVIDE         shift, and go to state 55
-    CLOSE_BRACKET  shift, and go to state 80
-
-    BinOp  go to state 56
+    $default  reduce using rule 49 (Expr)
 
 
 state 70
 
-   42 Expr: Expr . BinOp Expr
-   42     | Expr BinOp Expr .
+   43 Expr: Expr . BinOp Expr
+   48     | ID OPEN_BRACKET Expr . CLOSE_BRACKET
 
-    PLUS      shift, and go to state 52
-    MINUS     shift, and go to state 53
-    MULTIPLY  shift, and go to state 54
-    DIVIDE    shift, and go to state 55
+    PLUS           shift, and go to state 54
+    MINUS          shift, and go to state 55
+    MULTIPLY       shift, and go to state 56
+    DIVIDE         shift, and go to state 57
+    CLOSE_BRACKET  shift, and go to state 81
 
-    PLUS      [reduce using rule 42 (Expr)]
-    MINUS     [reduce using rule 42 (Expr)]
-    MULTIPLY  [reduce using rule 42 (Expr)]
-    DIVIDE    [reduce using rule 42 (Expr)]
-    $default  reduce using rule 42 (Expr)
-
-    BinOp  go to state 56
+    BinOp  go to state 58
 
 
 state 71
 
-   52 ArgList: Expr COMMA . ArgList
+   43 Expr: Expr . BinOp Expr
+   43     | Expr BinOp Expr .
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
+    PLUS      shift, and go to state 54
+    MINUS     shift, and go to state 55
+    MULTIPLY  shift, and go to state 56
+    DIVIDE    shift, and go to state 57
 
-    $default  reduce using rule 50 (ArgList)
+    PLUS      [reduce using rule 43 (Expr)]
+    MINUS     [reduce using rule 43 (Expr)]
+    MULTIPLY  [reduce using rule 43 (Expr)]
+    DIVIDE    [reduce using rule 43 (Expr)]
+    $default  reduce using rule 43 (Expr)
 
-    Expr      go to state 59
-    FuncCall  go to state 27
-    ArgList   go to state 81
+    BinOp  go to state 58
 
 
 state 72
 
-   49 FuncCall: ID OPEN_PAREN ArgList CLOSE_PAREN .
+   53 ArgList: Expr COMMA . ArgList
 
-    $default  reduce using rule 49 (FuncCall)
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    $default  reduce using rule 51 (ArgList)
+
+    Expr      go to state 61
+    FuncCall  go to state 28
+    ArgList   go to state 82
 
 
 state 73
 
-   41 LValue: ID OPEN_BRACKET Expr CLOSE_BRACKET .
+   50 FuncCall: ID OPEN_PAREN ArgList CLOSE_PAREN .
 
-    $default  reduce using rule 41 (LValue)
+    $default  reduce using rule 50 (FuncCall)
 
 
 state 74
 
-   18 FuncDecl: VOID ID OPEN_PAREN scope_enter . ParamList CLOSE_PAREN SEMICOLON scope_exit
-   20         | VOID ID OPEN_PAREN scope_enter . ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+   42 LValue: ID OPEN_BRACKET Expr CLOSE_BRACKET .
 
-    TYPE  shift, and go to state 76
-
-    $default  reduce using rule 24 (ParamList)
-
-    Param      go to state 77
-    ParamList  go to state 82
+    $default  reduce using rule 42 (LValue)
 
 
 state 75
 
-   36 Stmt: LValue EQ Expr SEMICOLON .
+   19 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter . ParamList CLOSE_PAREN SEMICOLON
+   21         | VOID SetFunctionName OPEN_PAREN scope_enter . ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
 
-    $default  reduce using rule 36 (Stmt)
+    TYPE  shift, and go to state 78
+
+    $default  reduce using rule 25 (ParamList)
+
+    Param      go to state 79
+    ParamList  go to state 83
 
 
 state 76
 
-   23 Param: TYPE . ID
+   37 Stmt: LValue EQ Expr SEMICOLON .
 
-    ID  shift, and go to state 83
+    $default  reduce using rule 37 (Stmt)
 
 
 state 77
 
-   25 ParamList: Param .
-   26          | Param . COMMA ParamList
+   33 VarDecl: TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET . SEMICOLON
 
-    COMMA  shift, and go to state 84
-
-    $default  reduce using rule 25 (ParamList)
+    SEMICOLON  shift, and go to state 84
 
 
 state 78
 
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList . CLOSE_PAREN SEMICOLON scope_exit
-   19         | TYPE ID OPEN_PAREN scope_enter ParamList . CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+   24 Param: TYPE . ID
 
-    CLOSE_PAREN  shift, and go to state 85
+    ID  shift, and go to state 85
 
 
 state 79
 
-   32 VarDecl: TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET . SEMICOLON
+   26 ParamList: Param .
+   27          | Param . COMMA ParamList
 
-    SEMICOLON  shift, and go to state 86
-
-
-state 80
-
-   47 Expr: ID OPEN_BRACKET Expr CLOSE_BRACKET .
-
-    $default  reduce using rule 47 (Expr)
-
-
-state 81
-
-   52 ArgList: Expr COMMA ArgList .
-
-    $default  reduce using rule 52 (ArgList)
-
-
-state 82
-
-   18 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList . CLOSE_PAREN SEMICOLON scope_exit
-   20         | VOID ID OPEN_PAREN scope_enter ParamList . CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
-
-    CLOSE_PAREN  shift, and go to state 87
-
-
-state 83
-
-   23 Param: TYPE ID .
-
-    $default  reduce using rule 23 (Param)
-
-
-state 84
-
-   26 ParamList: Param COMMA . ParamList
-
-    TYPE  shift, and go to state 76
-
-    $default  reduce using rule 24 (ParamList)
-
-    Param      go to state 77
-    ParamList  go to state 88
-
-
-state 85
-
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN . SEMICOLON scope_exit
-   19         | TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN . OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
-
-    SEMICOLON   shift, and go to state 89
-    OPEN_BRACE  shift, and go to state 90
-
-
-state 86
-
-   32 VarDecl: TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON .
-
-    $default  reduce using rule 32 (VarDecl)
-
-
-state 87
-
-   18 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN . SEMICOLON scope_exit
-   20         | VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN . OPEN_BRACE StmtList CLOSE_BRACE scope_exit
-
-    SEMICOLON   shift, and go to state 91
-    OPEN_BRACE  shift, and go to state 92
-
-
-state 88
-
-   26 ParamList: Param COMMA ParamList .
+    COMMA  shift, and go to state 86
 
     $default  reduce using rule 26 (ParamList)
 
 
+state 80
+
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList . CLOSE_PAREN SEMICOLON
+   20         | TYPE SetFunctionName OPEN_PAREN scope_enter ParamList . CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+
+    CLOSE_PAREN  shift, and go to state 87
+
+
+state 81
+
+   48 Expr: ID OPEN_BRACKET Expr CLOSE_BRACKET .
+
+    $default  reduce using rule 48 (Expr)
+
+
+state 82
+
+   53 ArgList: Expr COMMA ArgList .
+
+    $default  reduce using rule 53 (ArgList)
+
+
+state 83
+
+   19 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList . CLOSE_PAREN SEMICOLON
+   21         | VOID SetFunctionName OPEN_PAREN scope_enter ParamList . CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+
+    CLOSE_PAREN  shift, and go to state 88
+
+
+state 84
+
+   33 VarDecl: TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON .
+
+    $default  reduce using rule 33 (VarDecl)
+
+
+state 85
+
+   24 Param: TYPE ID .
+
+    $default  reduce using rule 24 (Param)
+
+
+state 86
+
+   27 ParamList: Param COMMA . ParamList
+
+    TYPE  shift, and go to state 78
+
+    $default  reduce using rule 25 (ParamList)
+
+    Param      go to state 79
+    ParamList  go to state 89
+
+
+state 87
+
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN . SEMICOLON
+   20         | TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN . OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit
+
+    SEMICOLON   shift, and go to state 90
+    OPEN_BRACE  shift, and go to state 91
+
+
+state 88
+
+   19 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN . SEMICOLON
+   21         | VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN . OPEN_BRACE StmtList CLOSE_BRACE scope_exit
+
+    SEMICOLON   shift, and go to state 92
+    OPEN_BRACE  shift, and go to state 93
+
+
 state 89
 
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON . scope_exit
+   27 ParamList: Param COMMA ParamList .
 
-    $default  reduce using rule 22 (scope_exit)
-
-    scope_exit  go to state 93
+    $default  reduce using rule 27 (ParamList)
 
 
 state 90
 
-   19 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE . StmtList ReturnStmt CLOSE_BRACE scope_exit
+   18 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON .
 
-    TYPE        shift, and go to state 28
+    $default  reduce using rule 18 (FuncDecl)
+
+
+state 91
+
+   20 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE . StmtList ReturnStmt CLOSE_BRACE scope_exit
+
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
+    VarDecl   go to state 30
     StmtList  go to state 94
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
 
 
-state 91
-
-   18 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON . scope_exit
-
-    $default  reduce using rule 22 (scope_exit)
-
-    scope_exit  go to state 95
-
-
 state 92
 
-   20 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE . StmtList CLOSE_BRACE scope_exit
+   19 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON .
 
-    TYPE        shift, and go to state 28
+    $default  reduce using rule 19 (FuncDecl)
+
+
+state 93
+
+   21 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE . StmtList CLOSE_BRACE scope_exit
+
+    TYPE        shift, and go to state 29
     WRITE       shift, and go to state 2
     OPEN_BRACE  shift, and go to state 3
     ID          shift, and go to state 4
 
-    $default  reduce using rule 33 (StmtList)
+    $default  reduce using rule 34 (StmtList)
 
-    VarDecl   go to state 29
-    StmtList  go to state 96
+    VarDecl   go to state 30
+    StmtList  go to state 95
     Stmt      go to state 18
     LValue    go to state 19
     FuncCall  go to state 20
 
 
-state 93
-
-   17 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit .
-
-    $default  reduce using rule 17 (FuncDecl)
-
-
 state 94
 
-   19 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList . ReturnStmt CLOSE_BRACE scope_exit
+   20 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList . ReturnStmt CLOSE_BRACE scope_exit
 
-    RETURN  shift, and go to state 97
+    RETURN  shift, and go to state 96
 
-    $default  reduce using rule 28 (ReturnStmt)
+    $default  reduce using rule 29 (ReturnStmt)
 
-    ReturnStmt  go to state 98
+    ReturnStmt  go to state 97
 
 
 state 95
 
-   18 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON scope_exit .
+   21 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList . CLOSE_BRACE scope_exit
 
-    $default  reduce using rule 18 (FuncDecl)
+    CLOSE_BRACE  shift, and go to state 98
 
 
 state 96
 
-   20 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList . CLOSE_BRACE scope_exit
+   28 ReturnStmt: RETURN . Expr SEMICOLON
 
-    CLOSE_BRACE  shift, and go to state 99
+    NUMBER         shift, and go to state 23
+    FLOAT_LITERAL  shift, and go to state 24
+    OPEN_PAREN     shift, and go to state 25
+    ID             shift, and go to state 26
+
+    Expr      go to state 99
+    FuncCall  go to state 28
 
 
 state 97
 
-   27 ReturnStmt: RETURN . Expr SEMICOLON
+   20 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt . CLOSE_BRACE scope_exit
 
-    NUMBER         shift, and go to state 22
-    FLOAT_LITERAL  shift, and go to state 23
-    OPEN_PAREN     shift, and go to state 24
-    ID             shift, and go to state 25
-
-    Expr      go to state 100
-    FuncCall  go to state 27
+    CLOSE_BRACE  shift, and go to state 100
 
 
 state 98
 
-   19 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt . CLOSE_BRACE scope_exit
+   21 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE . scope_exit
 
-    CLOSE_BRACE  shift, and go to state 101
+    $default  reduce using rule 23 (scope_exit)
+
+    scope_exit  go to state 101
 
 
 state 99
 
-   20 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE . scope_exit
+   28 ReturnStmt: RETURN Expr . SEMICOLON
+   43 Expr: Expr . BinOp Expr
 
-    $default  reduce using rule 22 (scope_exit)
+    SEMICOLON  shift, and go to state 102
+    PLUS       shift, and go to state 54
+    MINUS      shift, and go to state 55
+    MULTIPLY   shift, and go to state 56
+    DIVIDE     shift, and go to state 57
 
-    scope_exit  go to state 102
+    BinOp  go to state 58
 
 
 state 100
 
-   27 ReturnStmt: RETURN Expr . SEMICOLON
-   42 Expr: Expr . BinOp Expr
+   20 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE . scope_exit
 
-    SEMICOLON  shift, and go to state 103
-    PLUS       shift, and go to state 52
-    MINUS      shift, and go to state 53
-    MULTIPLY   shift, and go to state 54
-    DIVIDE     shift, and go to state 55
+    $default  reduce using rule 23 (scope_exit)
 
-    BinOp  go to state 56
+    scope_exit  go to state 103
 
 
 state 101
 
-   19 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE . scope_exit
+   21 FuncDecl: VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit .
 
-    $default  reduce using rule 22 (scope_exit)
-
-    scope_exit  go to state 104
+    $default  reduce using rule 21 (FuncDecl)
 
 
 state 102
 
-   20 FuncDecl: VOID ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit .
+   28 ReturnStmt: RETURN Expr SEMICOLON .
 
-    $default  reduce using rule 20 (FuncDecl)
+    $default  reduce using rule 28 (ReturnStmt)
 
 
 state 103
 
-   27 ReturnStmt: RETURN Expr SEMICOLON .
+   20 FuncDecl: TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit .
 
-    $default  reduce using rule 27 (ReturnStmt)
-
-
-state 104
-
-   19 FuncDecl: TYPE ID OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit .
-
-    $default  reduce using rule 19 (FuncDecl)
+    $default  reduce using rule 20 (FuncDecl)

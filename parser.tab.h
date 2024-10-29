@@ -88,7 +88,7 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 26 "parser.y"
+#line 29 "parser.y"
 {
     int number;
     float float_number;  // Add float support

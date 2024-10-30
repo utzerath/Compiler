@@ -37,7 +37,7 @@ void declareVariablesFromTAC(TAC* tacInstructions) {
             if (isArrayAccess(current->result)) {
                 char* arrayName = NULL;
                 char* indexExpr = NULL;
-                parseArrayAccess(current->result, &arrayName, &indexExpr);
+                parseArrayAccessCodeGen(current->result, &arrayName, &indexExpr);
                 declareVariable(arrayName);
                 free(arrayName);
                 free(indexExpr);
@@ -49,7 +49,7 @@ void declareVariablesFromTAC(TAC* tacInstructions) {
             if (isArrayAccess(current->arg1)) {
                 char* arrayName = NULL;
                 char* indexExpr = NULL;
-                parseArrayAccess(current->arg1, &arrayName, &indexExpr);
+                parseArrayAccessCodeGen(current->arg1, &arrayName, &indexExpr);
                 declareVariable(arrayName);
                 free(arrayName);
                 free(indexExpr);
@@ -61,7 +61,7 @@ void declareVariablesFromTAC(TAC* tacInstructions) {
             if (isArrayAccess(current->arg2)) {
                 char* arrayName = NULL;
                 char* indexExpr = NULL;
-                parseArrayAccess(current->arg2, &arrayName, &indexExpr);
+                parseArrayAccessCodeGen(current->arg2, &arrayName, &indexExpr);
                 declareVariable(arrayName);
                 free(arrayName);
                 free(indexExpr);
@@ -135,7 +135,7 @@ void generateMIPS(TAC* tacInstructions) {
                 // Assignment to array element: arr[index] = value
                 char* arrayName = NULL;
                 char* indexExpr = NULL;
-                parseArrayAccess(current->result, &arrayName, &indexExpr);
+                parseArrayAccessCodeGen(current->result, &arrayName, &indexExpr);
 
                 // Generate code to compute the address of arr[index]
                 char addressReg[5] = "$a0";  // Use $a0 as temporary register for address
@@ -269,7 +269,7 @@ bool isArrayAccess(char* operand) {
 }
 
 // Helper function to parse array access operands
-void parseArrayAccess(char* operand, char** arrayName, char** indexExpr) {
+void parseArrayAccessCodeGen(char* operand, char** arrayName, char** indexExpr) {
     char* leftBracket = strchr(operand, '[');
     char* rightBracket = strchr(operand, ']');
 
@@ -315,7 +315,7 @@ int getOperandRegister(char* operand) {
     } else if (isArrayAccess(operand)) {
         char* arrayName = NULL;
         char* indexExpr = NULL;
-        parseArrayAccess(operand, &arrayName, &indexExpr);
+        parseArrayAccessCodeGen(operand, &arrayName, &indexExpr);
 
         char addressReg[5] = "$a0";  // Use $a0 as temporary register for address
 

@@ -1,0 +1,22 @@
+b = 11
+x = 2.625000
+k = 0.085366
+t11 = 1 int_to_float
+t12 = 2.500000 div.s t11
+t13 = 3 * t12
+t14 = 49.218750 + t13
+arr[0] = 5
+arr[1] = 10
+arr[2] = 15
+arr[3] = 30
+y = 30
+z = 25
+write k
+write x
+write y
+write b
+write z
+write arr[0]
+write arr[1]
+write arr[2]
+write arr[3]

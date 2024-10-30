@@ -101,6 +101,29 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
                 tac->next = NULL;
                 appendTAC(&tacHead, tac);
             }
+            else if (node->assignStmt.lvalue->type == NodeType_ArrayAccess) {
+                // Handle array assignment
+                printf("Generating TAC for array assignment\n");
+                char* arrayName = strdup(node->assignStmt.lvalue->arrayAccess.arrayName);
+                char* indexOperand = createOperand(node->assignStmt.lvalue->arrayAccess.index);
+
+                // Represent the result as "arr[index]"
+                char* resultBuffer = (char*)malloc(strlen(arrayName) + strlen(indexOperand) + 10);
+                snprintf(resultBuffer, strlen(arrayName) + strlen(indexOperand) + 10, "%s[%s]", arrayName, indexOperand);
+
+                TAC* tac = (TAC*)malloc(sizeof(TAC));
+                tac->arg1 = rhs;
+                tac->op = strdup("=");
+                tac->result = resultBuffer;
+                tac->next = NULL;
+                appendTAC(&tacHead, tac);
+
+                free(arrayName);
+                free(indexOperand);
+            }
+            else {
+                fprintf(stderr, "Unsupported lvalue type in assignment\n");
+            }
             break;
 
         default:

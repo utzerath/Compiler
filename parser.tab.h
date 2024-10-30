@@ -58,7 +58,8 @@
      CLOSE_BRACKET = 274,
      RETURN = 275,
      VOID = 276,
-     COMMA = 277
+     COMMA = 277,
+     MAIN = 278
    };
 #endif
 /* Tokens.  */
@@ -82,6 +83,7 @@
 #define RETURN 275
 #define VOID 276
 #define COMMA 277
+#define MAIN 278
 
 
 
@@ -98,7 +100,7 @@ typedef union YYSTYPE
     struct ASTNode* ast; // Use ASTNode for representing AST parts, including function params and list nodes
 }
 /* Line 1529 of yacc.c.  */
-#line 102 "parser.tab.h"
+#line 104 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

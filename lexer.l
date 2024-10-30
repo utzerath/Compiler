@@ -49,7 +49,7 @@ ws          {delim}+
         }
 
 "void" {words++; chars += yyleng;
-            printf("%s : TYPE\n", yytext);
+            printf("%s : VOID\n", yytext);
             yylval.string = strdup(yytext); 
             return VOID;
         }
@@ -65,6 +65,12 @@ ws          {delim}+
             yylval.string = strdup(yytext); 
             return WRITE;
         }
+"main" { 
+    printf("%s : MAIN\n", yytext);
+    yylval.string = strdup(yytext); 
+    return MAIN;
+}
+
 
 {ID}        {words++; chars += yyleng;
               printf("%s : IDENTIFIER\n", yytext);

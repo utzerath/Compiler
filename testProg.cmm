@@ -1,11 +1,18 @@
-int main(float p) {
-    int l;
-    int k;
-    k = 4;
-    return l;
+int l;
+l = 10;
+
+void main() {
+    int p;
+    int s;
+    arr[1] = 1;
+    p = workplz(5, 3);
+    write p;
 }
-void test(int w)
-{
-    float r;
-    r = 1.01;
+
+int workplz(int t, int d) {
+    int r;
+    int q;
+    r = 10;
+    q = (r * t) + d;
+    return q;
 }

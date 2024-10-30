@@ -33,6 +33,7 @@ typedef struct ASTNode {
     union {
         struct {
             struct ASTNode* varDeclList;
+            struct ASTNode* mainFunc;
             struct ASTNode* stmtList;
             struct ASTNode* funcDeclList;
         } program;

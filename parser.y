@@ -7,7 +7,7 @@
 #include "semantic.h"
 #include "codeGenerator.h"
 #include "optimizer.h"
-
+#define YYDEBUG 1
 #define TABLE_SIZE 100
 
 extern int yylex();   // Declare yylex, the lexer function
@@ -52,12 +52,15 @@ Symbol* symbol = NULL;
 %token <string> RETURN
 %token <string> VOID
 %token COMMA  // Add COMMA token
+%token MAIN
 
-%type <ast> Program CompleteProgram PartialProgram OnlyVarDecls OnlyFuncs OnlyStmts
+%type <ast> Program
 %type <ast> FuncDeclList FuncDecl ParamList Param ReturnStmt FuncCall ArgList VarDecl VarDeclList Stmt StmtList Expr LValue
 %type <ast> GlobalDeclList // Add this line
 %type <character> BinOp
-%type <ast> scope_enter scope_exit SetFunctionName
+%type <ast> scope_enter scope_exit SetFunctionName MainFunc
+%type <string> ReturnType
+
 
 
 
@@ -68,99 +71,56 @@ Symbol* symbol = NULL;
 
 %%
 Program:
-    CompleteProgram
-    | PartialProgram
-    | OnlyVarDecls
-    | OnlyFuncs
-    | OnlyStmts
-    | /* empty */ {
-        printf("The PARSER has started with an empty program\n");
-        root = createNode(NodeType_Program);
-        root->program.varDeclList = NULL; // Initialize with NULL to indicate no global variables
-        root->program.funcDeclList = NULL; // No functions
-        root->program.stmtList = NULL; // No statements
+    GlobalDeclList StmtList MainFunc FuncDeclList {
+        printf("DEBUG: Parsed complete program with global declarations, statements, main function, and other functions.\n");
+        $$ = createNode(NodeType_Program);
+        $$->program.varDeclList = $1;
+        $$->program.stmtList = $2;
+        $$->program.mainFunc = $3;
+        $$->program.funcDeclList = $4;
     }
 ;
 
-
-CompleteProgram: GlobalDeclList FuncDeclList StmtList { 
-    $$ = createNode(NodeType_Program); 
-    $$->program.varDeclList = $1; // Global variables
-    $$->program.funcDeclList = $2; // Function declarations
-    $$->program.stmtList = $3; // Statements
-}
-| FuncDeclList StmtList { // Handle the case where there are no global vars
-    $$ = createNode(NodeType_Program);
-    $$->program.varDeclList = createNode(NodeType_VarDeclList); // Initialize with an empty VarDeclList
-    $$->program.funcDeclList = $1; 
-    $$->program.stmtList = $2; 
-};
-
-
-
-PartialProgram:
-    VarDeclList StmtList {
-        printf("The PARSER has started with variable declarations and statements\n");
-        root = malloc(sizeof(ASTNode));
-        root->type = NodeType_Program;
-        root->program.varDeclList = $1;
-        root->program.funcDeclList = NULL;
-        root->program.stmtList = $2;
-    }
-;
-
-OnlyVarDecls:
-    VarDeclList {
-        printf("The PARSER has started with only variable declarations\n");
-        root = malloc(sizeof(ASTNode));
-        root->type = NodeType_Program;
-        root->program.varDeclList = $1;
-        root->program.funcDeclList = NULL;
-        root->program.stmtList = NULL;
-    }
-;
-
-OnlyFuncs:
-    FuncDeclList {
-        printf("The PARSER has started with only function declarations\n");
-        root = malloc(sizeof(ASTNode));
-        root->type = NodeType_Program;
-        root->program.varDeclList = NULL;
-        root->program.funcDeclList = $1;
-        root->program.stmtList = NULL;
-    }
-;
-
-OnlyStmts:
-    StmtList {
-        printf("The PARSER has started with only statements\n");
-        root = malloc(sizeof(ASTNode));
-        root->type = NodeType_Program;
-        root->program.varDeclList = NULL;
-        root->program.funcDeclList = NULL;
-        root->program.stmtList = $1;
-    }
-;
 
 GlobalDeclList:
-    /* empty */ { $$ = NULL; } // No global declarations
-    | VarDecl GlobalDeclList {  // Recursive case
-        $$ = createNode(NodeType_VarDeclList);  // Create a new VarDeclList node
-        $$->varDeclList.varDecl = $1;  // The current variable declaration
-        $$->varDeclList.varDeclList = $2;  // The rest of the variable declarations
+    /* empty */ { $$ = NULL; }
+    | VarDecl GlobalDeclList {
+        printf("DEBUG: Parsed global variable declaration: %s\n", $1->varDecl.varName);
+        ASTNode* varDeclListNode = createNode(NodeType_VarDeclList);
+        varDeclListNode->varDeclList.varDecl = $1;
+        varDeclListNode->varDeclList.varDeclList = $2;
+        $$ = varDeclListNode;
+    }
+;
+
+
+MainFunc:
+    VOID MAIN OPEN_PAREN CLOSE_PAREN { currentFunctionName = strdup("main"); } scope_enter OPEN_BRACE StmtList CLOSE_BRACE scope_exit {
+        printf("PARSER: Recognized main function with body.\n");
+
+        // Add `main` as a function with `Is Function: 1`
+        addSymbol(symTab, currentFunctionName, "void", 1, NULL, NULL);
+
+        // Create the AST node for main
+        $$ = createFuncDeclNode("void", currentFunctionName, NULL, $8, NULL);
+
+        // Clean up
+        free(currentFunctionName);
+        currentFunctionName = NULL;
     }
 ;
 
 
 
-FuncDeclList:
-    /* empty */ { 
-        $$ = NULL;
-    }
-    | FuncDecl FuncDeclList {
-        $$ = createNode(NodeType_FuncDeclList);
-        $$->funcDeclList.funcDecl = $1;
-        $$->funcDeclList.funcDeclList = $2;
+
+GlobalDeclList:
+    /* empty */ { $$ = NULL; } 
+    | VarDecl GlobalDeclList { 
+        printf("DEBUG: Parsed global variable declaration: %s\n", $1->varDecl.varName);
+        ASTNode* varDeclListNode = createNode(NodeType_VarDeclList);
+        varDeclListNode->varDeclList.varDecl = $1;  
+        varDeclListNode->varDeclList.varDeclList = $2;  
+        $$ = varDeclListNode; // Return the new list node
     }
 ;
 
@@ -182,48 +142,39 @@ SetFunctionName:
 ;
 
 
-
 FuncDecl:
-    // Function declaration without body (TYPE function)
-    TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON {
-        printf("PARSER: Recognized function declaration: %s\n", currentFunctionName); // Print function name
-        addSymbol(symTab, currentFunctionName, $1, 1, NULL, NULL); // Add function to global scope
-        $$ = createFuncDeclNode($1, currentFunctionName, $5, NULL, NULL); // Create function node without body
-        free(currentFunctionName); // Free memory after use
-        currentFunctionName = NULL; // Reset function name
-    }
+    ReturnType SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit {
+        printf("PARSER: Recognized function declaration with body: %s of return type %s\n", currentFunctionName, $1);
 
-    // Function declaration without body (void function)
-    | VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN SEMICOLON {
-        printf("PARSER: Recognized void function declaration: %s\n", currentFunctionName); // Print function name
-        addSymbol(symTab, currentFunctionName, "void", 1, NULL, NULL); // Void function without body
-        $$ = createFuncDeclNode("void", currentFunctionName, $5, NULL, NULL); // Create void node
-        free(currentFunctionName);
-        currentFunctionName = NULL;
-    }
-    
-    // Function definition with body (TYPE function)
-    | TYPE SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList ReturnStmt CLOSE_BRACE scope_exit {
-        printf("PARSER: Recognized function declaration with body: %s\n", currentFunctionName); // Print function name
-        addSymbol(symTab, currentFunctionName, $1, 1, NULL, NULL); // Add function with body
-        $$ = createFuncDeclNode($1, currentFunctionName, $5, $8, $9); // Create node with body and return
-        free(currentFunctionName);
-        currentFunctionName = NULL;
-    }
+        // Add the function itself with `Is Function: 1`
+        addSymbol(symTab, currentFunctionName, $1, 1, NULL, NULL);
 
-    // Function definition with body (void function)
-    | VOID SetFunctionName OPEN_PAREN scope_enter ParamList CLOSE_PAREN OPEN_BRACE StmtList CLOSE_BRACE scope_exit {
-        printf("PARSER: Recognized void function declaration with body: %s\n", currentFunctionName); // Print function name
-        addSymbol(symTab, currentFunctionName, "void", 1, NULL, NULL); // Void function with body
-        $$ = createFuncDeclNode("void", currentFunctionName, $5, $8, NULL); // Create void node with body
+        // Create function declaration node in AST
+        $$ = createFuncDeclNode($1, currentFunctionName, $5, $8, $9);
+
+        // Clear function name after use
         free(currentFunctionName);
         currentFunctionName = NULL;
     }
 ;
 
 
+// Define the ReturnType rule to handle `void`, `int`, and `float`
+ReturnType:
+    VOID { $$ = "void"; }
+    | TYPE { $$ = $1; }  // Handles `int`, `float`, etc.
+;
 
-
+FuncDeclList:
+    /* empty */ { $$ = NULL; }
+    | FuncDecl FuncDeclList {
+        printf("DEBUG: Parsed function declaration: %s\n", $1->funcDecl.name);
+        ASTNode* node = createNode(NodeType_FuncDeclList);
+        node->funcDeclList.funcDecl = $1;
+        node->funcDeclList.funcDeclList = $2;
+        $$ = node;
+    }
+;
 
 
 scope_enter:
@@ -245,13 +196,15 @@ scope_exit:
 Param:
     TYPE ID {
         printf("PARSER: Recognized parameter: %s of type %s in function %s\n", $2, $1, currentFunctionName);
-        addSymbol(symTab, $2, $1, /* isFunction = */ false, NULL, currentFunctionName);
 
-        // Create the AST node for the parameter
-        $$ = createParamNode($1, $2);  // Assuming createParamNode creates a valid ASTNode.
-        // Ensure createParamNode is defined to take the type and ID as arguments and return an ASTNode*
+        // Add the parameter with `Is Function: 1` and set `belongingFunction` to current function
+        addSymbol(symTab, $2, $1, 1, NULL, currentFunctionName);
+
+        // Create an AST node for the parameter
+        $$ = createParamNode($1, $2);
     }
 ;
+
 
 
 
@@ -260,7 +213,7 @@ ParamList:
         $$ = NULL;  // No parameters
     }
     | Param {
-        $$ = createParamListNode($1, NULL);  // Single parameter (base case for the list)
+        $$ = createParamListNode($1, NULL);  // Single parameter
     }
     | Param COMMA ParamList {
         $$ = createParamListNode($1, $3);  // Link the current parameter with the rest of the list
@@ -270,15 +223,22 @@ ParamList:
 
 
 
+ReturnStmt:
+    RETURN Expr SEMICOLON { 
+        printf("PARSER: Recognized return statement with value\n");
+        $$ = createReturnNode($2); // Create return node with expression
+    }
+    | RETURN SEMICOLON { 
+        printf("PARSER: Invalid return statement in non-void function\n");
+        yyerror("Cannot return without a value in a non-void function."); // Handle error
+        $$ = NULL; // Set to NULL if error occurs
+    }
+    | /* empty */ { 
+        $$ = NULL; // No return statement for void functions
+    }
+;
 
 
-ReturnStmt: RETURN Expr SEMICOLON {
-    printf("PARSER: Recognized return statement\n");
-    $$ = createReturnNode($2);
-}
-| /* empty */ {
-    $$ = NULL;  // Void functions may not have return statements
-}
 ;
 VarDeclList:
     /* empty */ { 
@@ -296,8 +256,8 @@ VarDeclList:
 
 VarDecl:
     TYPE ID SEMICOLON {
-        printf("PARSER: Recognized variable declaration: %s of type %s in function %s\n", $2, $1, currentFunctionName);
-        addSymbol(symTab, $2, $1, 0, NULL, currentFunctionName); // Use currentFunctionName for local variables
+        printf("PARSER: Recognized variable declaration: %s of type %s in function %s\n", $2, $1, currentFunctionName ? currentFunctionName : "global");
+        addSymbol(symTab, $2, $1, 0, NULL, currentFunctionName); // Use currentFunctionName for local variables, NULL for global
         $$ = createNode(NodeType_VarDecl);  // AST node creation
         $$->varDecl.varType = strdup($1);
         $$->varDecl.varName = strdup($2);
@@ -314,7 +274,7 @@ VarDecl:
             $$->arrayDecl.varType = strdup($1);
             $$->arrayDecl.varName = strdup($2);
             $$->arrayDecl.size = $4;
-            addSymbol(symTab, $2, $1, 0, NULL, currentFunctionName); // Use currentFunctionName for function scope
+            addSymbol(symTab, $2, $1, 0, NULL, currentFunctionName); // Handle array declarations appropriately
         }
     }
 ;
@@ -326,17 +286,18 @@ StmtList:
         $$->stmtList.stmtList = NULL;
     }
     | Stmt StmtList {
-        // Create a new StmtList node and link the current statement
-        $$ = createNode(NodeType_StmtList);
+        $$ = createNode(NodeType_StmtList); // Create a new StmtList node
         $$->stmtList.stmt = $1;              // Set the current statement
         $$->stmtList.stmtList = $2;          // Link to the rest of the statements
     }
-    | VarDecl StmtList {  // Allow variable declarations within StmtList
-        $$ = createNode(NodeType_StmtList);
-        $$->stmtList.stmt = $1;  // Treat VarDecl as a statement within StmtList
-        $$->stmtList.stmtList = $2;
+    | VarDecl StmtList { 
+        $$ = createNode(NodeType_StmtList); // Create a new StmtList node for variable declarations
+        $$->stmtList.stmt = $1;              // Add VarDecl to the statement list
+        $$->stmtList.stmtList = $2;          // Link to the rest of the statements
     }
 ;
+
+
 
 
 Stmt: LValue EQ Expr SEMICOLON {
@@ -379,43 +340,45 @@ LValue: ID {
 }
 ;
 
-Expr: Expr BinOp Expr {
-    printf("PARSER: Recognized binary expression\n");
-    $$ = malloc(sizeof(ASTNode));
-    $$->type = NodeType_BinOp;
-    $$->binOp.left = $1;
-    $$->binOp.right = $3;
-    $$->binOp.operator = $2;
-}
-| NUMBER {
-    printf("PARSER: Recognized integer\n");
-    $$ = createIntNode($1);
-}
-| FLOAT_LITERAL {
-    printf("PARSER: Recognized float\n");
-    $$ = createFloatNode($1);
-}
-| ID {
-    printf("PARSER: Recognized id\n");
-    $$ = malloc(sizeof(ASTNode));
-    $$->type = NodeType_SimpleID;
-    $$->simpleID.name = strdup($1);
-}
-| FuncCall {
-    $$ = $1;  // Return the result of function call
-}
-| ID OPEN_BRACKET Expr CLOSE_BRACKET {
-    printf("PARSER: Recognized array access: %s[...]\n", $1);
-    $$ = malloc(sizeof(ASTNode));
-    $$->type = NodeType_ArrayAccess;
-    $$->arrayAccess.arrayName = strdup($1);
-    $$->arrayAccess.index = $3;
-}
-| OPEN_PAREN Expr CLOSE_PAREN {
-    printf("PARSER: Recognized parenthesized expression\n");
-    $$ = $2;  // Just return the expression inside parentheses
-}
+Expr:
+    FuncCall { 
+        $$ = $1;  // Treat the function call as an expression
+    }
+    | Expr BinOp Expr {
+        printf("PARSER: Recognized binary expression\n");
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_BinOp;
+        $$->binOp.left = $1;
+        $$->binOp.right = $3;
+        $$->binOp.operator = $2;
+    }
+    | NUMBER {
+        printf("PARSER: Recognized integer\n");
+        $$ = createIntNode($1);
+    }
+    | FLOAT_LITERAL {
+        printf("PARSER: Recognized float\n");
+        $$ = createFloatNode($1);
+    }
+    | ID {
+        printf("PARSER: Recognized id\n");
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_SimpleID;
+        $$->simpleID.name = strdup($1);
+    }
+    | ID OPEN_BRACKET Expr CLOSE_BRACKET {
+        printf("PARSER: Recognized array access: %s[...]\n", $1);
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_ArrayAccess;
+        $$->arrayAccess.arrayName = strdup($1);
+        $$->arrayAccess.index = $3;
+    }
+    | OPEN_PAREN Expr CLOSE_PAREN {
+        printf("PARSER: Recognized parenthesized expression\n");
+        $$ = $2;  // Just return the expression inside parentheses
+    }
 ;
+
 
 FuncCall: ID OPEN_PAREN ArgList CLOSE_PAREN {
     printf("PARSER: Recognized function call: %s\n", $1);

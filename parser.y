@@ -78,8 +78,11 @@ Program:
         $$->program.stmtList = $2;
         $$->program.mainFunc = $3;
         $$->program.funcDeclList = $4;
+        
+        root = $$;  // Set root to point to the top-level AST node
     }
 ;
+
 
 
 GlobalDeclList:
@@ -193,12 +196,13 @@ scope_exit:
     }
 ;
 
+
 Param:
     TYPE ID {
         printf("PARSER: Recognized parameter: %s of type %s in function %s\n", $2, $1, currentFunctionName);
 
-        // Add the parameter with `Is Function: 1` and set `belongingFunction` to current function
-        addSymbol(symTab, $2, $1, 1, NULL, currentFunctionName);
+        // Directly add the parameter to the symbol table with correct order
+        addSymbol(symTab, $2, $1, 1, NULL, currentFunctionName);  // `Is Function` set to 1 to match your setup
 
         // Create an AST node for the parameter
         $$ = createParamNode($1, $2);
@@ -216,9 +220,10 @@ ParamList:
         $$ = createParamListNode($1, NULL);  // Single parameter
     }
     | Param COMMA ParamList {
-        $$ = createParamListNode($1, $3);  // Link the current parameter with the rest of the list
+        $$ = createParamListNode($1, $3);  // Append current parameter to the end of the list
     }
 ;
+
 
 
 
@@ -420,9 +425,14 @@ int main() {
 
     if (yyparse() == 0) {
         printf("Parsing successful!\n");
+
+        if (root == NULL) {
+        fprintf(stderr, "Error: AST root node is NULL after parsing.\n");
+        return EXIT_FAILURE;
+        }
         traverseAST(root, 0);
         printSymbolTable(symTab);
-        printf("\n=== SEMANTIC ANALYSIS ===\n\n");
+        printf("\n ===SEMANTIC ANALYSIS===\n");
         semanticAnalysis(root, symTab);
         printf("\n=== TAC GENERATION ===\n");
         printTACToFile("TAC.ir", tacHead);

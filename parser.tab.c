@@ -490,11 +490,11 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    74,    74,    86,    87,    98,    98,   117,   118,   128,
-     146,   164,   165,   169,   170,   181,   189,   197,   212,   215,
-     218,   227,   231,   236,   258,   265,   283,   288,   293,   303,
-     310,   316,   320,   328,   334,   344,   347,   355,   359,   363,
-     369,   376,   383,   389,   392,   395,   401,   402,   403,   404
+       0,    74,    74,    89,    90,   101,   101,   120,   121,   131,
+     149,   167,   168,   172,   173,   184,   192,   201,   216,   219,
+     222,   232,   236,   241,   263,   270,   288,   293,   298,   308,
+     315,   321,   325,   333,   339,   349,   352,   360,   364,   368,
+     374,   381,   388,   394,   397,   400,   406,   407,   408,   409
 };
 #endif
 
@@ -1469,16 +1469,18 @@ yyreduce:
         (yyval.ast)->program.stmtList = (yyvsp[(2) - (4)].ast);
         (yyval.ast)->program.mainFunc = (yyvsp[(3) - (4)].ast);
         (yyval.ast)->program.funcDeclList = (yyvsp[(4) - (4)].ast);
+        
+        root = (yyval.ast);  // Set root to point to the top-level AST node
     ;}
     break;
 
   case 3:
-#line 86 "parser.y"
+#line 89 "parser.y"
     { (yyval.ast) = NULL; ;}
     break;
 
   case 4:
-#line 87 "parser.y"
+#line 90 "parser.y"
     {
         printf("DEBUG: Parsed global variable declaration: %s\n", (yyvsp[(1) - (2)].ast)->varDecl.varName);
         ASTNode* varDeclListNode = createNode(NodeType_VarDeclList);
@@ -1489,12 +1491,12 @@ yyreduce:
     break;
 
   case 5:
-#line 98 "parser.y"
+#line 101 "parser.y"
     { currentFunctionName = strdup("main"); ;}
     break;
 
   case 6:
-#line 98 "parser.y"
+#line 101 "parser.y"
     {
         printf("PARSER: Recognized main function with body.\n");
 
@@ -1511,12 +1513,12 @@ yyreduce:
     break;
 
   case 7:
-#line 117 "parser.y"
+#line 120 "parser.y"
     { (yyval.ast) = NULL; ;}
     break;
 
   case 8:
-#line 118 "parser.y"
+#line 121 "parser.y"
     { 
         printf("DEBUG: Parsed global variable declaration: %s\n", (yyvsp[(1) - (2)].ast)->varDecl.varName);
         ASTNode* varDeclListNode = createNode(NodeType_VarDeclList);
@@ -1527,7 +1529,7 @@ yyreduce:
     break;
 
   case 9:
-#line 128 "parser.y"
+#line 131 "parser.y"
     {
         // Create a new AST node for the function declaration
         (yyval.ast) = createNode(NodeType_FuncDecl); // Create a node of type function declaration
@@ -1545,7 +1547,7 @@ yyreduce:
     break;
 
   case 10:
-#line 146 "parser.y"
+#line 149 "parser.y"
     {
         printf("PARSER: Recognized function declaration with body: %s of return type %s\n", currentFunctionName, (yyvsp[(1) - (11)].string));
 
@@ -1562,22 +1564,22 @@ yyreduce:
     break;
 
   case 11:
-#line 164 "parser.y"
+#line 167 "parser.y"
     { (yyval.string) = "void"; ;}
     break;
 
   case 12:
-#line 165 "parser.y"
+#line 168 "parser.y"
     { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
     break;
 
   case 13:
-#line 169 "parser.y"
+#line 172 "parser.y"
     { (yyval.ast) = NULL; ;}
     break;
 
   case 14:
-#line 170 "parser.y"
+#line 173 "parser.y"
     {
         printf("DEBUG: Parsed function declaration: %s\n", (yyvsp[(1) - (2)].ast)->funcDecl.name);
         ASTNode* node = createNode(NodeType_FuncDeclList);
@@ -1588,7 +1590,7 @@ yyreduce:
     break;
 
   case 15:
-#line 181 "parser.y"
+#line 184 "parser.y"
     { 
         enterScope(symTab); 
         printf("Entering scope level %d in function %s\n", symTab->currentScopeLevel, currentFunctionName); // Debugging output
@@ -1597,7 +1599,7 @@ yyreduce:
     break;
 
   case 16:
-#line 189 "parser.y"
+#line 192 "parser.y"
     { 
         printf("Exiting scope level %d in function %s\n", symTab->currentScopeLevel, currentFunctionName); // Debugging output
         exitScope(symTab); 
@@ -1606,12 +1608,12 @@ yyreduce:
     break;
 
   case 17:
-#line 197 "parser.y"
+#line 201 "parser.y"
     {
         printf("PARSER: Recognized parameter: %s of type %s in function %s\n", (yyvsp[(2) - (2)].string), (yyvsp[(1) - (2)].string), currentFunctionName);
 
-        // Add the parameter with `Is Function: 1` and set `belongingFunction` to current function
-        addSymbol(symTab, (yyvsp[(2) - (2)].string), (yyvsp[(1) - (2)].string), 1, NULL, currentFunctionName);
+        // Directly add the parameter to the symbol table with correct order
+        addSymbol(symTab, (yyvsp[(2) - (2)].string), (yyvsp[(1) - (2)].string), 1, NULL, currentFunctionName);  // `Is Function` set to 1 to match your setup
 
         // Create an AST node for the parameter
         (yyval.ast) = createParamNode((yyvsp[(1) - (2)].string), (yyvsp[(2) - (2)].string));
@@ -1619,28 +1621,28 @@ yyreduce:
     break;
 
   case 18:
-#line 212 "parser.y"
+#line 216 "parser.y"
     {
         (yyval.ast) = NULL;  // No parameters
     ;}
     break;
 
   case 19:
-#line 215 "parser.y"
+#line 219 "parser.y"
     {
         (yyval.ast) = createParamListNode((yyvsp[(1) - (1)].ast), NULL);  // Single parameter
     ;}
     break;
 
   case 20:
-#line 218 "parser.y"
+#line 222 "parser.y"
     {
-        (yyval.ast) = createParamListNode((yyvsp[(1) - (3)].ast), (yyvsp[(3) - (3)].ast));  // Link the current parameter with the rest of the list
+        (yyval.ast) = createParamListNode((yyvsp[(1) - (3)].ast), (yyvsp[(3) - (3)].ast));  // Append current parameter to the end of the list
     ;}
     break;
 
   case 21:
-#line 227 "parser.y"
+#line 232 "parser.y"
     { 
         printf("PARSER: Recognized return statement with value\n");
         (yyval.ast) = createReturnNode((yyvsp[(2) - (3)].ast)); // Create return node with expression
@@ -1648,7 +1650,7 @@ yyreduce:
     break;
 
   case 22:
-#line 231 "parser.y"
+#line 236 "parser.y"
     { 
         printf("PARSER: Invalid return statement in non-void function\n");
         yyerror("Cannot return without a value in a non-void function."); // Handle error
@@ -1657,14 +1659,14 @@ yyreduce:
     break;
 
   case 23:
-#line 236 "parser.y"
+#line 241 "parser.y"
     { 
         (yyval.ast) = NULL; // No return statement for void functions
     ;}
     break;
 
   case 24:
-#line 258 "parser.y"
+#line 263 "parser.y"
     {
         printf("PARSER: Recognized variable declaration: %s of type %s in function %s\n", (yyvsp[(2) - (3)].string), (yyvsp[(1) - (3)].string), currentFunctionName ? currentFunctionName : "global");
         addSymbol(symTab, (yyvsp[(2) - (3)].string), (yyvsp[(1) - (3)].string), 0, NULL, currentFunctionName); // Use currentFunctionName for local variables, NULL for global
@@ -1675,7 +1677,7 @@ yyreduce:
     break;
 
   case 25:
-#line 265 "parser.y"
+#line 270 "parser.y"
     {
         printf("PARSER: Recognized array declaration: %s[%d]\n", (yyvsp[(2) - (6)].string), (yyvsp[(4) - (6)].number));
         symbol = lookupSymbol(symTab, (yyvsp[(2) - (6)].string), 1);
@@ -1694,7 +1696,7 @@ yyreduce:
     break;
 
   case 26:
-#line 283 "parser.y"
+#line 288 "parser.y"
     {
         (yyval.ast) = createNode(NodeType_StmtList); // Create an empty StmtList node
         (yyval.ast)->stmtList.stmt = NULL;
@@ -1703,7 +1705,7 @@ yyreduce:
     break;
 
   case 27:
-#line 288 "parser.y"
+#line 293 "parser.y"
     {
         (yyval.ast) = createNode(NodeType_StmtList); // Create a new StmtList node
         (yyval.ast)->stmtList.stmt = (yyvsp[(1) - (2)].ast);              // Set the current statement
@@ -1712,7 +1714,7 @@ yyreduce:
     break;
 
   case 28:
-#line 293 "parser.y"
+#line 298 "parser.y"
     { 
         (yyval.ast) = createNode(NodeType_StmtList); // Create a new StmtList node for variable declarations
         (yyval.ast)->stmtList.stmt = (yyvsp[(1) - (2)].ast);              // Add VarDecl to the statement list
@@ -1721,7 +1723,7 @@ yyreduce:
     break;
 
   case 29:
-#line 303 "parser.y"
+#line 308 "parser.y"
     {
        printf("PARSER: Recognized assignment statement\n");
        (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1732,7 +1734,7 @@ yyreduce:
     break;
 
   case 30:
-#line 310 "parser.y"
+#line 315 "parser.y"
     { 
        printf("PARSER: Recognized write statement\n");
        (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1742,7 +1744,7 @@ yyreduce:
     break;
 
   case 31:
-#line 316 "parser.y"
+#line 321 "parser.y"
     {
        printf("PARSER: Recognized function call statement\n");
        (yyval.ast) = (yyvsp[(1) - (2)].ast);
@@ -1750,7 +1752,7 @@ yyreduce:
     break;
 
   case 32:
-#line 320 "parser.y"
+#line 325 "parser.y"
     {
        printf("PARSER: Recognized a block statement\n");
        (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1760,7 +1762,7 @@ yyreduce:
     break;
 
   case 33:
-#line 328 "parser.y"
+#line 333 "parser.y"
     {
     printf("PARSER: Recognized LValue ID: %s\n", (yyvsp[(1) - (1)].string));
     (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1770,7 +1772,7 @@ yyreduce:
     break;
 
   case 34:
-#line 334 "parser.y"
+#line 339 "parser.y"
     {
     printf("PARSER: Recognized LValue array access: %s[...]\n", (yyvsp[(1) - (4)].string));
     (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1781,14 +1783,14 @@ yyreduce:
     break;
 
   case 35:
-#line 344 "parser.y"
+#line 349 "parser.y"
     { 
         (yyval.ast) = (yyvsp[(1) - (1)].ast);  // Treat the function call as an expression
     ;}
     break;
 
   case 36:
-#line 347 "parser.y"
+#line 352 "parser.y"
     {
         printf("PARSER: Recognized binary expression\n");
         (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1800,7 +1802,7 @@ yyreduce:
     break;
 
   case 37:
-#line 355 "parser.y"
+#line 360 "parser.y"
     {
         printf("PARSER: Recognized integer\n");
         (yyval.ast) = createIntNode((yyvsp[(1) - (1)].number));
@@ -1808,7 +1810,7 @@ yyreduce:
     break;
 
   case 38:
-#line 359 "parser.y"
+#line 364 "parser.y"
     {
         printf("PARSER: Recognized float\n");
         (yyval.ast) = createFloatNode((yyvsp[(1) - (1)].float_number));
@@ -1816,7 +1818,7 @@ yyreduce:
     break;
 
   case 39:
-#line 363 "parser.y"
+#line 368 "parser.y"
     {
         printf("PARSER: Recognized id\n");
         (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1826,7 +1828,7 @@ yyreduce:
     break;
 
   case 40:
-#line 369 "parser.y"
+#line 374 "parser.y"
     {
         printf("PARSER: Recognized array access: %s[...]\n", (yyvsp[(1) - (4)].string));
         (yyval.ast) = malloc(sizeof(ASTNode));
@@ -1837,7 +1839,7 @@ yyreduce:
     break;
 
   case 41:
-#line 376 "parser.y"
+#line 381 "parser.y"
     {
         printf("PARSER: Recognized parenthesized expression\n");
         (yyval.ast) = (yyvsp[(2) - (3)].ast);  // Just return the expression inside parentheses
@@ -1845,7 +1847,7 @@ yyreduce:
     break;
 
   case 42:
-#line 383 "parser.y"
+#line 388 "parser.y"
     {
     printf("PARSER: Recognized function call: %s\n", (yyvsp[(1) - (4)].string));
     (yyval.ast) = createFuncCallNode((yyvsp[(1) - (4)].string), (yyvsp[(3) - (4)].ast));
@@ -1853,49 +1855,49 @@ yyreduce:
     break;
 
   case 43:
-#line 389 "parser.y"
+#line 394 "parser.y"
     {
     (yyval.ast) = NULL;
 ;}
     break;
 
   case 44:
-#line 392 "parser.y"
+#line 397 "parser.y"
     {
     (yyval.ast) = createArgList((yyvsp[(1) - (1)].ast), NULL);  // Single argument
 ;}
     break;
 
   case 45:
-#line 395 "parser.y"
+#line 400 "parser.y"
     {
     (yyval.ast) = createArgList((yyvsp[(1) - (3)].ast), (yyvsp[(3) - (3)].ast));  // Multiple arguments
 ;}
     break;
 
   case 46:
-#line 401 "parser.y"
+#line 406 "parser.y"
     { (yyval.character) = '+'; ;}
     break;
 
   case 47:
-#line 402 "parser.y"
+#line 407 "parser.y"
     { (yyval.character) = '-'; ;}
     break;
 
   case 48:
-#line 403 "parser.y"
+#line 408 "parser.y"
     { (yyval.character) = '*'; ;}
     break;
 
   case 49:
-#line 404 "parser.y"
+#line 409 "parser.y"
     { (yyval.character) = '/'; ;}
     break;
 
 
 /* Line 1267 of yacc.c.  */
-#line 1899 "parser.tab.c"
+#line 1901 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2109,7 +2111,7 @@ yyreturn:
 }
 
 
-#line 407 "parser.y"
+#line 412 "parser.y"
 
 
 // Main function
@@ -2126,9 +2128,14 @@ int main() {
 
     if (yyparse() == 0) {
         printf("Parsing successful!\n");
+
+        if (root == NULL) {
+        fprintf(stderr, "Error: AST root node is NULL after parsing.\n");
+        return EXIT_FAILURE;
+        }
         traverseAST(root, 0);
         printSymbolTable(symTab);
-        printf("\n=== SEMANTIC ANALYSIS ===\n\n");
+        printf("\n ===SEMANTIC ANALYSIS===\n");
         semanticAnalysis(root, symTab);
         printf("\n=== TAC GENERATION ===\n");
         printTACToFile("TAC.ir", tacHead);

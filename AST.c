@@ -31,11 +31,17 @@ void traverseAST(ASTNode* node, int level) {
             printf("Program\n");
             traverseAST(node->program.varDeclList, level + 1); // Traverse variable declarations
             traverseAST(node->program.funcDeclList, level + 1); // Traverse function declarations
+            if (node->program.mainFunc != NULL) {
+                traverseAST(node->program.mainFunc, level + 1); // Traverse main function node
+            }
             if (node->program.stmtList != NULL) {
                 traverseAST(node->program.stmtList, level + 1); // Traverse statements
             }
             break;
-
+        case NodeType_MainFunc:
+            printf("Main Function\n");
+            traverseAST(node->mainFunc.stmtList, level + 1); // Traverse statements inside main
+            break;
         case NodeType_VarDeclList:
             printf("VarDeclList\n");
             traverseAST(node->varDeclList.varDecl, level + 1); // Traverse each variable declaration
@@ -227,8 +233,11 @@ void freeAST(ASTNode* node) {
             freeAST(node->program.varDeclList);
             freeAST(node->program.funcDeclList);
             freeAST(node->program.stmtList);
+            freeAST(node->program.mainFunc);
             break;
-
+        case NodeType_MainFunc:
+            freeAST(node->mainFunc.stmtList); // Free the statement list in main
+            break;
         case NodeType_VarDeclList:
             freeAST(node->varDeclList.varDecl);
             freeAST(node->varDeclList.varDeclList);
@@ -343,8 +352,11 @@ ASTNode* createNode(NodeType type) {
             newNode->program.varDeclList = NULL;
             newNode->program.funcDeclList = NULL;
             newNode->program.stmtList = NULL;
+            newNode->program.mainFunc = NULL;
             break;
-
+        case NodeType_MainFunc:
+            newNode->mainFunc.stmtList = NULL; // Initialize stmtList for main function
+            break;
         case NodeType_VarDeclList:
             newNode->varDeclList.varDecl = NULL;
             newNode->varDeclList.varDeclList = NULL;

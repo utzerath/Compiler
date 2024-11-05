@@ -4,11 +4,11 @@ l = 10;
 void main() {
     int p;
     int s;
+    int arr[1];
     arr[1] = 1;
     p = workplz(5, 3);
     write p;
 }
-
 int workplz(int t, int d) {
     int r;
     int q;

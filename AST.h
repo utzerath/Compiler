@@ -24,7 +24,8 @@ typedef enum {
     NodeType_FuncCall,
     NodeType_ReturnStmt,
     NodeType_Param,
-    NodeType_ArgList
+    NodeType_ArgList,
+    NodeType_MainFunc
 } NodeType;
 
 // Single typedef and struct definition for ASTNode
@@ -93,7 +94,9 @@ typedef struct ASTNode {
             char* arrayName;
             struct ASTNode* index;
         } arrayAccess;
-
+        struct {
+            struct ASTNode* stmtList;       // Main function's statement list
+        } mainFunc; 
         struct {
             struct ASTNode* paramList; // This will hold a linked list of parameters as ASTNodes
             char* returnType;          // Return type for function declaration

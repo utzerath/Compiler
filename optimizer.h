@@ -44,6 +44,7 @@ bool copyPropagation(TAC** head);
 bool deadCodeElimination(TAC** head, bool freeAll);
 bool isUsedLater(TAC* head, const char* varName);
 void safeStrReplace(char** target, const char* source);
+char* trimWhitespace(const char* str);
 // Utility function to print the optimized TAC to a file
 void printOptimizedTAC(const char* filename, TAC* head);
 

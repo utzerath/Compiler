@@ -11,7 +11,7 @@ main:
 	lw $t1, var_t
 	mul $t2, $t0, $t1
 	lw $t0, var_d
-	add $t1, ðrb¯U, $t0
+	add $t1, `uP®U, $t0
 	lw $t0, var_t4
 	move $t1, $t0
 	sw $t1, var_p

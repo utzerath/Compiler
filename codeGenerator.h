@@ -92,7 +92,7 @@ int getOperandRegister(char* operand);
 char* getMipsOperator(char* op);
 
 void generateCodeForArrayAccess(char* arrayName, char* indexExpr, char* reg);
-void parseArrayAccess(char* operand, char** arrayName, char** indexExpr);
+void parseArrayAccessCodeGen(char* operand, char** arrayName, char** indexExpr);
 bool isArrayAccess(char* operand);
 
 #endif // CODE_GENERATOR_H

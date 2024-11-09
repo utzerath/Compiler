@@ -6,6 +6,50 @@
     #include <string.h>
     #include <stdint.h>
 
+// Data structure to map function names to their return variables
+typedef struct FunctionReturn {
+    char* functionName;
+    char* returnVar;
+    struct FunctionReturn* next;
+} FunctionReturn;
+
+FunctionReturn* functionReturns = NULL;
+
+void addFunctionReturn(const char* functionName, const char* returnVar) {
+    if (functionName == NULL || returnVar == NULL) {
+        fprintf(stderr, "Error: functionName or returnVar is NULL in addFunctionReturn.\n");
+        return;
+    }
+
+    FunctionReturn* newEntry = malloc(sizeof(FunctionReturn));
+    if (newEntry == NULL) {
+        perror("Failed to allocate memory for FunctionReturn");
+        exit(EXIT_FAILURE);
+    }
+    addToFreeList(newEntry);  // Track the FunctionReturn struct
+
+    newEntry->functionName = strdup(functionName);
+    if (newEntry->functionName == NULL) {
+        perror("Failed to duplicate functionName");
+        exit(EXIT_FAILURE);
+    }
+    addToFreeList(newEntry->functionName);
+
+    newEntry->returnVar = strdup(returnVar);
+    if (newEntry->returnVar == NULL) {
+        perror("Failed to duplicate returnVar");
+        exit(EXIT_FAILURE);
+    }
+    addToFreeList(newEntry->returnVar);
+
+    newEntry->next = functionReturns;
+    functionReturns = newEntry;
+
+    printf("Added function return mapping: %s returns %s\n", functionName, returnVar);
+}
+
+
+
 
 // Enhanced FreeListNode with reference counting
 typedef struct FreeListNode {
@@ -109,6 +153,95 @@ void freeTACNode(TAC* node) {
     removeFromFreeList(node);
 }
 
+
+bool isUsedLaterFinal(TAC* head, const char* varName) { 
+    if (varName == NULL) {
+        printf("isUsedLaterFinal: varName is NULL\n");
+        return false;
+    }
+
+    printf("isUsedLaterFinal: Checking for varName='%s'\n", varName);
+
+    while (head != NULL) {
+        // Check for variable redefinition (to avoid considering it "used" after redefinition)
+        if (head->op && strcmp(head->op, "=") == 0 && head->result && strcmp(head->result, varName) == 0) {
+            return false;  // Variable redefined before any use
+        }
+
+        // Check if `varName` is used in either `arg1` or `arg2`, excluding 'return' operations
+        if ((head->arg1 && strcmp(head->arg1, varName) == 0) ||
+            (head->arg2 && strcmp(head->arg2, varName) == 0)) {
+
+            if (head->op && strcmp(head->op, "return") == 0) {
+                // Ignore uses in 'return' statements
+                // Continue to the next instruction
+            } else {
+                return true;  // Variable is used in another operation before redefinition
+            }
+        }
+
+        // Check if `varName` appears in a "write" operation as `arg1`
+        if (head->op && strcmp(head->op, "write") == 0 && head->arg1 && strcmp(head->arg1, varName) == 0) {
+            return true;  // Variable is used in a "write" operation
+        }
+
+        head = head->next;
+    }
+    return false;
+}
+
+void deadCodeEliminationFinal(TAC** head, bool freeAll) {
+    TAC* current = *head;
+    TAC* prev = NULL;
+
+    while (current != NULL) {
+        printf("Processing TAC in deadCodeEliminationFinal: op='%s', result='%s'\n",
+            current->op ? current->op : "NULL",
+            current->result ? current->result : "NULL");
+
+        bool shouldRemove = false;
+
+        // Remove 'return' statements
+        if (current->op != NULL && strcmp(current->op, "return") == 0) {
+            printf("Dead Code Elimination: Removing 'return' statement\n");
+            shouldRemove = true;
+        }
+        // Remove assignments where result is not used later
+        else if (current->op != NULL && strcmp(current->op, "=") == 0 && current->result != NULL) {
+            // Only remove if the result variable is not used later in the TAC list
+            if (!isUsedLaterFinal(current->next, current->result)) {
+                printf("Dead Code Elimination: Removing dead assignment to '%s'\n", current->result);
+                shouldRemove = true;
+            }
+        }
+
+        if (shouldRemove) {
+            // Adjust pointers to remove the current node
+            TAC* temp = current;
+            if (prev == NULL) {
+                *head = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            current = current->next;
+            freeTACNode(temp);
+        } else {
+            prev = current;
+            current = current->next;
+        }
+    }
+
+    // If freeAll is true, free any remaining TAC nodes
+    if (freeAll) {
+        freeTACList(*head);
+        *head = NULL;
+    }
+}
+
+
+
+
+
 bool deadCodeElimination(TAC** head, bool freeAll) {
     bool changed = false;
     TAC* current = *head;
@@ -120,7 +253,12 @@ bool deadCodeElimination(TAC** head, bool freeAll) {
             current->result ? current->result : "NULL");
 
         // Only consider removing assignments if they truly have no effect
-        if (current->op != NULL && strcmp(current->op, "=") == 0 && current->result != NULL) {
+    if (current->op != NULL && strcmp(current->op, "=") == 0 && current->result != NULL) {
+        // Skip array assignments
+        if (strstr(current->result, "[") != NULL) {
+            // This is an array assignment, do not remove
+            printf("Skipping array assignment to '%s'\n", current->result);
+        } else {
             // Only remove if the result variable is not used later in the TAC list
             if (!isUsedLater(current->next, current->result)) {
                 printf("Dead Code Elimination: Removing dead assignment to '%s'\n", current->result);
@@ -139,6 +277,7 @@ bool deadCodeElimination(TAC** head, bool freeAll) {
                 continue;
             }
         }
+    }
         prev = current;
         current = current->next;
     }
@@ -162,6 +301,11 @@ bool isUsedLater(TAC* head, const char* varName) {
 
     printf("isUsedLater: Checking for varName='%s'\n", varName);
 
+    // **If the variable is a parameter, we consider it as used**
+    if (strncmp(varName, "param", 5) == 0) {
+        // It's a parameter variable, so we consider it as used
+        return true;
+    }
     while (head != NULL) {
         // Check for variable redefinition (to avoid considering it "used" after redefinition)
         if (head->op && strcmp(head->op, "=") == 0 && head->result && strcmp(head->result, varName) == 0) {
@@ -354,6 +498,24 @@ bool constantFolding(TAC** head) {
             current->op ? current->op : "NULL",
             (current->arg2 && (uintptr_t)current->arg2 != 0xbebebebebebebebeULL) ? current->arg2 : "UNINITIALIZED");
 
+        // Handle 'array_access' operations
+        if (current->op != NULL && strcmp(current->op, "array_access") == 0) {
+            printf("Handling 'array_access' operation.\n");
+            if (current->arg2 != NULL) {
+                // Replace arg1 with arg2
+                safeStrReplace(&current->arg1, current->arg2);
+                // Set op and arg2 to NULL
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = true;
+                printf("Array access folded: %s = %s\n", current->result, current->arg1);
+            } else {
+                printf("arg2 is NULL, cannot fold 'array_access' operation.\n");
+            }
+            current = current->next;
+            continue;
+        }
+
         // Handle operations where both arguments are numeric constants
         if (current->arg1 && current->arg2 &&
             (uintptr_t)current->arg1 != 0xbebebebebebebebeULL &&
@@ -542,10 +704,9 @@ char* trimWhitespace(const char* str) {
 
 
 
-
 bool constantPropagation(TAC** head) {
-    TAC* current = *head;
     bool changed = false;
+    bool localChanged;
 
     // Extend VarValue to include array indices
     typedef struct VarValue {
@@ -557,18 +718,70 @@ bool constantPropagation(TAC** head) {
 
     VarValue* varTable = NULL;
 
-    while (current != NULL) {
+    do {
+        localChanged = false;
+        TAC* current = *head;
+
+        while (current != NULL) {
+
+        // Handle 'return' instructions
+        if (current->op != NULL && strcmp(current->op, "return") == 0) {
+            // The function name is in arg2, and the return variable is in arg1
+            printf("Processing 'return' instruction:\n");
+            printf("  op: '%s'\n", current->op);
+            printf("  arg1 (returnVar): '%s'\n", current->arg1 ? current->arg1 : "NULL");
+            printf("  arg2 (functionName): '%s'\n", current->arg2 ? current->arg2 : "NULL");
+            printf("  result: '%s'\n", current->result ? current->result : "NULL");
+
+            if (current->arg1 == NULL || current->arg2 == NULL) {
+                fprintf(stderr, "Error: 'return' instruction has NULL arg1 or arg2.\n");
+                current = current->next;
+                continue;
+            }
+
+            // Add the function return mapping
+            addFunctionReturn(current->arg2, current->arg1);
+            current = current->next;
+            continue;
+        }
+
+        // Inside your constantPropagation function
+        if (current->op != NULL && strcmp(current->op, "=") == 0 && current->arg1 != NULL) {
+            // Handle array access in arg1
+            char* arrayName = NULL;
+            char* indexStr = NULL;
+            if (parseArrayAccess(current->arg1, &arrayName, &indexStr)) {
+                // Check if we have a known value for this array element
+                VarValue* var = varTable;
+                while (var != NULL) {
+                    if (strcmp(var->varName, arrayName) == 0 && strcmp(var->index, indexStr) == 0) {
+                        // Replace the array access with the known value
+                        printf("Replacing array access '%s' with value '%s'\n", current->arg1, var->value);
+                        safeStrReplace(&current->arg1, var->value);
+                        changed = true;
+                        break;
+                    }
+                    var = var->next;
+                }
+                free(arrayName);
+                free(indexStr);
+            }
+            // Continue with the rest of the constant propagation logic
+        }
+
+
+        
         // Skip 'write' operations entirely
         if (current->op != NULL && strcmp(current->op, "write") == 0) {
             current = current->next;
             continue;
         }
 
-                // Handle assignments to array elements
+        // Handle assignments to array elements
         if (current->op != NULL && strcmp(current->op, "[]=") == 0) {
             // current->result: array name
             // current->arg1: index
-            // current->arg2: value
+            //current->arg2: value
 
             // Attempt to replace arg2 if it's a variable with a known constant value
             if (current->arg2 != NULL && !isNumericConstant(current->arg2)) {
@@ -691,157 +904,165 @@ bool constantPropagation(TAC** head) {
 
         // Existing logic for operations
         // If the operation is '=', handle assignments
+        // Handle '=' assignments
+        // Handle '=' assignments
         if (current->op != NULL && strcmp(current->op, "=") == 0) {
-            // Attempt to replace arg1 if it's a variable with a known constant value
-            if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
-                VarValue* var = varTable;
-                while (var != NULL) {
-                    if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
-                        printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
-                        safeStrReplace(&current->arg1, var->value);
-                        changed = true;
-                        break;
-                    }
-                    var = var->next;
-                }
-            }
-
-            // Now, check if arg1 is a constant (after possible substitution)
-            if (isNumericConstant(current->arg1)) {
-                // Map result variable to constant value
-                if (current->result != NULL && strlen(current->result) > 0) {
-                    // Update or add the mapping
+                // Attempt to replace arg1 if it's a variable with a known constant value
+                if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
                     VarValue* var = varTable;
-                    bool found = false;
                     while (var != NULL) {
-                        if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
-                            // Update existing entry
-                            removeFromFreeList(var->value);
-                            var->value = strdup(current->arg1);
-                            if (var->value == NULL) {
-                                perror("Failed to duplicate string in varTable");
-                                exit(EXIT_FAILURE);
-                            }
-                            addToFreeList(var->value);
-                            found = true;
-                            printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                        if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
+                            printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
+                            safeStrReplace(&current->arg1, var->value);
+                            changed = localChanged = true;
                             break;
                         }
                         var = var->next;
                     }
-                    if (!found) {
-                        // Add new entry to varTable
-                        VarValue* newVar = malloc(sizeof(VarValue));
-                        if (newVar == NULL) {
-                            perror("Failed to allocate memory for VarValue");
-                            exit(EXIT_FAILURE);
-                        }
-                        addToFreeList(newVar);  // Track the VarValue struct
+                }
 
-                        newVar->varName = strdup(current->result);
-                        if (newVar->varName == NULL) {
-                            perror("Failed to allocate memory for varName");
-                            exit(EXIT_FAILURE);
+                // Now, check if arg1 is a constant (after possible substitution)
+                if (isNumericConstant(current->arg1)) {
+                    // Map result variable to constant value
+                    if (current->result != NULL && strlen(current->result) > 0) {
+                        // Update or add the mapping
+                        VarValue* var = varTable;
+                        bool found = false;
+                        while (var != NULL) {
+                            if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
+                                // Update existing entry
+                                free(var->value);
+                                var->value = strdup(current->arg1);
+                                found = true;
+                                printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                                break;
+                            }
+                            var = var->next;
                         }
-                        addToFreeList(newVar->varName);  // Track the varName string
-
-                        newVar->index = NULL;  // Scalar variable
-                        newVar->value = strdup(current->arg1);
-                        if (newVar->value == NULL) {
-                            perror("Failed to allocate memory for value");
-                            exit(EXIT_FAILURE);
+                        if (!found) {
+                            // Add new entry to varTable
+                            VarValue* newVar = malloc(sizeof(VarValue));
+                            newVar->varName = strdup(current->result);
+                            newVar->index = NULL;  // Scalar variable
+                            newVar->value = strdup(current->arg1);
+                            newVar->next = varTable;
+                            varTable = newVar;
+                            printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
                         }
-                        addToFreeList(newVar->value);  // Track the value string
-
-                        newVar->next = varTable;
-                        varTable = newVar;
-                        printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
+                    } else {
+                        // Invalid result, skip mapping
+                        printf("Skipping mapping for instruction with invalid result.\n");
                     }
                 } else {
-                    // Invalid result, skip mapping
-                    printf("Skipping mapping for instruction with invalid result.\n");
+                    // Handle assignment to a non-constant (invalidate any existing mapping)
+                    if (current->result != NULL && strlen(current->result) > 0) {
+                        // Remove existing mapping if any
+                        VarValue** indirect = &varTable;
+                        while (*indirect) {
+                            if ((*indirect)->index == NULL && strcmp((*indirect)->varName, current->result) == 0) {
+                                VarValue* temp = *indirect;
+                                *indirect = (*indirect)->next;
+                                free(temp->varName);
+                                free(temp->value);
+                                free(temp);
+                                printf("Removed mapping for variable: %s (assigned non-constant)\n", current->result);
+                                break;
+                            }
+                            indirect = &(*indirect)->next;
+                        }
+                    }
                 }
-            } else {
-                // Handle assignment to a non-constant (invalidate any existing mapping)
+            }
+// Handle function calls
+        else if (current->op != NULL && strcmp(current->op, "call") == 0) {
+            // current->arg1: function name
+            // current->result: variable receiving the return value
+
+            // Check if we have a return mapping for this function
+            FunctionReturn* funcRet = functionReturns;
+            while (funcRet != NULL) {
+                if (strcmp(funcRet->functionName, current->arg1) == 0) {
+                    // Check if the return variable has a known constant value
+                    VarValue* var = varTable;
+                    while (var != NULL) {
+                        if (strcmp(var->varName, funcRet->returnVar) == 0) {
+                            // Replace the function call with an assignment
+                            printf("Propagating constant: Replacing function call '%s' with value '%s'\n", current->arg1, var->value);
+                            safeStrReplace(&current->op, "=");
+                            safeStrReplace(&current->arg1, var->value);
+                            safeStrReplace(&current->arg2, NULL);
+                            changed = true;
+                            break;
+                        }
+                        var = var->next;
+                    }
+                    break;
+                }
+                funcRet = funcRet->next;
+            }
+        }
+        else {
+                // For other operations, attempt to replace arg1 and arg2 with constants
+                // Replace arg1 if it's a variable with a known constant value
+                if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
+                    VarValue* var = varTable;
+                    while (var != NULL) {
+                        if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
+                            printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
+                            safeStrReplace(&current->arg1, var->value);
+                            changed = localChanged = true;
+                            break;
+                        }
+                        var = var->next;
+                    }
+                }
+
+                // Replace arg2 if it's a variable with a known constant value
+                if (current->arg2 != NULL && !isNumericConstant(current->arg2)) {
+                    VarValue* var = varTable;
+                    while (var != NULL) {
+                        if (var->index == NULL && strcmp(current->arg2, var->varName) == 0) {
+                            printf("Propagating constant: Replacing '%s' with '%s' in arg2\n", current->arg2, var->value);
+                            safeStrReplace(&current->arg2, var->value);
+                            changed = localChanged = true;
+                            break;
+                        }
+                        var = var->next;
+                    }
+                }
+
+                // Invalidate mapping if the operation assigns to a variable
                 if (current->result != NULL && strlen(current->result) > 0) {
-                    // Remove existing mapping if any
                     VarValue** indirect = &varTable;
                     while (*indirect) {
                         if ((*indirect)->index == NULL && strcmp((*indirect)->varName, current->result) == 0) {
                             VarValue* temp = *indirect;
                             *indirect = (*indirect)->next;
-                            removeFromFreeList(temp->varName);
-                            removeFromFreeList(temp->value);
-                            removeFromFreeList(temp);
-                            printf("Removed mapping for variable: %s (assigned non-constant)\n", current->result);
+                            free(temp->varName);
+                            free(temp->value);
+                            free(temp);
+                            printf("Removed mapping for variable: %s (modified by operation)\n", current->result);
                             break;
                         }
                         indirect = &(*indirect)->next;
                     }
                 }
             }
-        } else {
-            // For operations other than '=', attempt to replace arg1 and arg2 with constants if possible
 
-            // Replace arg1 if it's a variable with a known constant value
-            if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
-                VarValue* var = varTable;
-                while (var != NULL) {
-                    if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
-                        printf("Propagating constant: Replacing '%s' with '%s' in arg1\n", current->arg1, var->value);
-                        safeStrReplace(&current->arg1, var->value);
-                        changed = true;
-                        break;
-                    }
-                    var = var->next;
-                }
-            }
-
-            // Replace arg2 if it's a variable with a known constant value
-            if (current->arg2 != NULL && !isNumericConstant(current->arg2)) {
-                VarValue* var = varTable;
-                while (var != NULL) {
-                    if (var->index == NULL && strcmp(current->arg2, var->varName) == 0) {
-                        printf("Propagating constant: Replacing '%s' with '%s' in arg2\n", current->arg2, var->value);
-                        safeStrReplace(&current->arg2, var->value);
-                        changed = true;
-                        break;
-                    }
-                    var = var->next;
-                }
-            }
-
-            // If the operation assigns to a variable, invalidate any existing mapping
-            if (current->result != NULL && strlen(current->result) > 0) {
-                // Remove existing mapping if any
-                VarValue** indirect = &varTable;
-                while (*indirect) {
-                    if ((*indirect)->index == NULL && strcmp((*indirect)->varName, current->result) == 0) {
-                        VarValue* temp = *indirect;
-                        *indirect = (*indirect)->next;
-                        removeFromFreeList(temp->varName);
-                        removeFromFreeList(temp->value);
-                        removeFromFreeList(temp);
-                        printf("Removed mapping for variable: %s (modified by operation)\n", current->result);
-                        break;
-                    }
-                    indirect = &(*indirect)->next;
-                }
-            }
+            current = current->next;
         }
 
-        current = current->next;
-    }
+    } while (localChanged);
 
-    // Properly free varTable entries using removeFromFreeList
+    // Properly free varTable entries
     VarValue* var = varTable;
     while (var != NULL) {
         VarValue* temp = var;
         var = var->next;
-        removeFromFreeList(temp->varName);
-        if (temp->index) removeFromFreeList(temp->index);
-        removeFromFreeList(temp->value);
-        removeFromFreeList(temp);
+        free(temp->varName);
+        if (temp->index) free(temp->index);
+        free(temp->value);
+        free(temp);
     }
 
     return changed;
@@ -879,7 +1100,7 @@ void optimizeTAC(TAC** head) {
 
     } while (changed);  // Repeat until no more changes are made
 
-
+    deadCodeEliminationFinal(head, false);
 
     printOptimizedTAC("TACOptimized.ir", *head);
     printf("Optimized TAC written to TACOptimized.ir\n");

@@ -79,9 +79,6 @@ int allocateRegisterForVariable(char* varName);
 // Check if an operand represents an array access
 bool isArrayAccess(char* operand);
 
-// Parse an array access operand into array name and index expression
-void parseArrayAccess(char* operand, char** arrayName, char** indexExpr);
-
 // Generate code to compute the address of an array element
 void generateCodeForArrayAccess(char* arrayName, char* indexExpr, char* reg);
 

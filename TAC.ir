@@ -1,13 +1,20 @@
+t = param1
+d = param2
 r = 10
 t0 = r * t
 t1 = t0 + d
 q = t1
+return q workplz
 l = 10
-arr[1] = 1
 t2 = 5
-push t2
+param1 = t2
 t3 = 3
-push t3
+param2 = t3
 t4 = call workplz
 p = t4
+optopus1 = 9
+t5 = 1 + optopus1
+arr2 = t5
+write optopus1
+write arr2
 write p

@@ -5,6 +5,8 @@
 
 int tempVars[20]; // Array for tracking temp variables
 static int tempVarCounter = 0;
+static char* currentFunctionName = NULL;
+
 
 char* createTempVar() {
     int tempIndex = allocateNextAvailableTempVar(tempVars);
@@ -36,6 +38,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             printf("Processing Main Function\n");
             semanticAnalysis(node->mainFunc.stmtList, symTab); // Analyze statements within main
             break;
+
       case NodeType_ArrayDecl:
             // Check if the array is already declared in the current scope
             if (lookupSymbol(symTab, node->arrayDecl.varName, 1) == NULL) {
@@ -50,7 +53,8 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
 
 
-            case NodeType_FuncDecl:
+        case NodeType_FuncDecl:
+            currentFunctionName = strdup(node->funcDecl.name);
             if (strcmp(node->funcDecl.name, "main") == 0) {
                 // Special handling for main, if needed
                 if (node->funcDecl.paramList != NULL) {
@@ -70,9 +74,43 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             // Proceed with analysis of parameters, body, and return statement
             SymbolTable* funcSymTab = createSymbolTable(50); // Local symbol table for the function scope
             semanticAnalysis(node->funcDecl.paramList, funcSymTab); // Analyze parameters in function scope
+
+            // Assign paramX to the actual parameter name
+            ASTNode* paramListNode = node->funcDecl.paramList;
+            int paramIndex = 0;
+            while (paramListNode != NULL) {
+                // Extract the current parameter node
+                ASTNode* paramNode = paramListNode->paramList.param; // Current parameter node
+                paramIndex++;
+                char paramVarName[20];
+                snprintf(paramVarName, sizeof(paramVarName), "param%d", paramIndex);
+
+                // Assign paramVarName to the actual parameter name
+                TAC* assignTAC = (TAC*)malloc(sizeof(TAC));
+                assignTAC->op = strdup("=");
+                assignTAC->arg1 = strdup(paramVarName);
+                assignTAC->result = strdup(paramNode->param.varName);
+                assignTAC->next = NULL;
+                appendTAC(&tacHead, assignTAC);
+
+                // **Add the parameter to the symbol table**
+                if (lookupSymbol(funcSymTab, paramNode->param.varName, 1) == NULL) {
+                    addSymbol(funcSymTab, paramNode->param.varName, paramNode->param.varType, 0, NULL, NULL);
+                } else {
+                    fprintf(stderr, "Semantic error: Parameter %s is already declared\n", paramNode->param.varName);
+                }
+
+                // Move to the next parameter list node
+                paramListNode = paramListNode->paramList.paramList;
+            }
+
             semanticAnalysis(node->funcDecl.stmtList, funcSymTab);  // Analyze function body
             semanticAnalysis(node->funcDecl.returnStmt, funcSymTab); // Analyze return statement if any
+            free(currentFunctionName); // Free the allocated memory
+            currentFunctionName = NULL; // Reset the function name
             break;
+
+
 
 
         case NodeType_ParamList:
@@ -101,8 +139,24 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
 
         case NodeType_ReturnStmt:
-            semanticAnalysis(node->returnStmt.expr, symTab); // Analyze return expression
+            printf("Generating TAC for return statement\n");
+            // Generate TAC for the expression being returned
+            TAC* exprTAC = generateTACForExpr(node->returnStmt.expr);
+            if (!exprTAC || !exprTAC->result) {
+                fprintf(stderr, "Error generating TAC for return expression\n");
+                return;
+            }
+            // Create the 'return' instruction
+            TAC* returnTAC = (TAC*)malloc(sizeof(TAC));
+            returnTAC->op = strdup("return");
+            returnTAC->arg1 = strdup(exprTAC->result);
+            returnTAC->arg2 = strdup(currentFunctionName); // Include function name
+            returnTAC->result = NULL;
+            returnTAC->next = NULL;
+            appendTAC(&tacHead, returnTAC);
             break;
+
+
 
         case NodeType_BinOp:
             printf("Performing semantic analysis on binary operation\n");
@@ -166,20 +220,37 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
         tac->result = strdup(node->assignStmt.lvalue->simpleID.name);
         appendTAC(&tacHead, tac);
     } else if (node->assignStmt.lvalue->type == NodeType_ArrayAccess) {
-        // Array assignment
+        printf("Generating TAC for array assignment\n");
         char* arrayName = strdup(node->assignStmt.lvalue->arrayAccess.arrayName);
-        char* index = createOperand(node->assignStmt.lvalue->arrayAccess.index);
+        ASTNode* indexNode = node->assignStmt.lvalue->arrayAccess.index;
+        
+        // Ensure the index is a constant integer
+        if (indexNode->type != NodeType_SimpleExpr || indexNode->simpleExpr.valueType != 'i') {
+            fprintf(stderr, "Error: Non-constant index in array assignment not supported\n");
+            free(arrayName);
+            return;
+        }
+        int indexValue = indexNode->simpleExpr.intValue;
+        
+        // Create the variable name arr2
+        char* arrayElementName = (char*)malloc(strlen(arrayName) + 20);
+        snprintf(arrayElementName, strlen(arrayName) + 20, "%s%d", arrayName, indexValue);
 
+        // Generate the assignment TAC
         TAC* tac = (TAC*)malloc(sizeof(TAC));
-        tac->op = strdup("array_assign");
         tac->arg1 = rhs;
-        tac->arg2 = index;
-        tac->result = arrayName;
+        tac->op = strdup("=");
+        tac->result = arrayElementName;
+        tac->next = NULL;
         appendTAC(&tacHead, tac);
 
-        printf("Generated TAC for array assignment: %s[%s] = %s\n", arrayName, index, rhs);
+        free(arrayName);
     }
-    break;
+
+            else {
+                fprintf(stderr, "Unsupported lvalue type in assignment\n");
+            }
+            break;
 
 
 
@@ -210,6 +281,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
     }
 }
+
 TAC* generateTACForExpr(ASTNode* expr) {
     if (!expr) return NULL;
 
@@ -236,12 +308,18 @@ TAC* generateTACForExpr(ASTNode* expr) {
         }
 
         case NodeType_SimpleID: {
-            instruction->arg1 = strdup(expr->simpleID.name);
-            instruction->op = strdup("assign");
-            instruction->result = createTempVar();
-            appendTAC(&tacHead, instruction);
-            return instruction;
+            // No need to generate a new instruction for a simple ID
+            free(instruction); // Free the initially allocated instruction
+            TAC* temp = (TAC*)malloc(sizeof(TAC));
+            temp->result = strdup(expr->simpleID.name);
+            temp->op = NULL;
+            temp->arg1 = NULL;
+            temp->arg2 = NULL;
+            temp->next = NULL;
+            return temp;
         }
+
+
 
         case NodeType_BinOp: {
             char* leftOperand = createOperand(expr->binOp.left);
@@ -267,90 +345,103 @@ TAC* generateTACForExpr(ASTNode* expr) {
         }
 
       case NodeType_ArrayAccess: {
-    char* arrayName = strdup(expr->arrayAccess.arrayName);
-    char* index = createOperand(expr->arrayAccess.index);  // Evaluate the index
-
-    // Check for successful operand generation
-    if (!arrayName || !index) {
-        fprintf(stderr, "Error: Operand generation failed for ArrayAccess.\n");
+        printf("Generating TAC for array access\n");
+        char* arrayName = strdup(expr->arrayAccess.arrayName);
+        ASTNode* indexNode = expr->arrayAccess.index;
+        
+        // Ensure the index is a constant integer
+        if (indexNode->type != NodeType_SimpleExpr || indexNode->simpleExpr.valueType != 'i') {
+            fprintf(stderr, "Error: Non-constant index in array access not supported\n");
+            free(instruction);
+            free(arrayName);
+            return NULL;
+        }
+        int indexValue = indexNode->simpleExpr.intValue;
+        
+        // Create the variable name arr2
+        char* arrayElementName = (char*)malloc(strlen(arrayName) + 20);
+        snprintf(arrayElementName, strlen(arrayName) + 20, "%s%d", arrayName, indexValue);
+        
         free(arrayName);
-        free(index);
-        free(instruction);
-        return NULL;
+        free(instruction); // Since we're not generating an instruction here
+        
+        // Return a TAC node with the result as arr2
+        TAC* temp = (TAC*)malloc(sizeof(TAC));
+        temp->result = arrayElementName; // arr2
+        temp->op = NULL;
+        temp->arg1 = NULL;
+        temp->arg2 = NULL;
+        temp->next = NULL;
+        return temp;
     }
 
-    instruction->op = strdup("array_access");
-    instruction->arg1 = arrayName;      // Array name
-    instruction->arg2 = index;          // Index within the array
-    instruction->result = createTempVar();  // Temporary variable to store accessed value
-
-    appendTAC(&tacHead, instruction);  // Append TAC instruction to the list
-
-    // Debug output for verification
-    printf("Generated TAC for array access: %s = %s[%s]\n", instruction->result, arrayName, index);
-
-    return instruction;
-}
 
 
-        case NodeType_ArgList: {
-    while (expr) {
-        TAC* argTAC = generateTACForExpr(expr->argList.arg);  // Process each argument
-        if (!argTAC || !argTAC->result) {  // Check if argTAC is valid and has a result
-            fprintf(stderr, "Error: TAC generation failed for function argument.\n");
-            free(instruction);
-            return NULL;
+
+    case NodeType_ArgList: {
+        while (expr) {
+            TAC* argTAC = generateTACForExpr(expr->argList.arg);  // Process each argument
+            if (!argTAC || !argTAC->result) {  // Check if argTAC is valid and has a result
+                fprintf(stderr, "Error: TAC generation failed for function argument.\n");
+                free(instruction);
+                return NULL;
+            }
+            
+            TAC* pushArg = (TAC*)malloc(sizeof(TAC));
+            pushArg->op = strdup("push");
+            pushArg->arg1 = strdup(argTAC->result); // Push argument result
+            pushArg->result = NULL;
+            pushArg->next = NULL;
+            
+            appendTAC(&tacHead, pushArg);  // Append push instruction
+            expr = expr->argList.next;     // Move to the next argument
         }
-        
-        TAC* pushArg = (TAC*)malloc(sizeof(TAC));
-        pushArg->op = strdup("push");
-        pushArg->arg1 = strdup(argTAC->result); // Push argument result
-        pushArg->result = NULL;
-        pushArg->next = NULL;
-        
-        appendTAC(&tacHead, pushArg);  // Append push instruction
-        expr = expr->argList.next;     // Move to the next argument
-    }
-    free(instruction);  // Free the unused `instruction`
-    return NULL;        // Return NULL as ArgList does not return an instruction
-}
-
-
-       case NodeType_FuncCall: {
-    ASTNode* argNode = expr->funcCall.args;
-    
-    // Push arguments onto the stack
-    while (argNode) {
-        TAC* argTAC = generateTACForExpr(argNode->argList.arg);
-        if (!argTAC || !argTAC->result) {
-            fprintf(stderr, "Error: TAC generation failed for function call argument.\n");
-            free(instruction);
-            return NULL;
-        }
-        
-        // Generate push instruction for each argument
-        TAC* pushArg = (TAC*)malloc(sizeof(TAC));
-        if (!pushArg) {
-            fprintf(stderr, "Error: Memory allocation failed for pushArg.\n");
-            free(instruction);
-            return NULL;
-        }
-        pushArg->op = strdup("push");
-        pushArg->arg1 = strdup(argTAC->result);
-        pushArg->result = NULL;
-        appendTAC(&tacHead, pushArg);
-        
-        argNode = argNode->argList.next;
+        free(instruction);  // Free the unused `instruction`
+        return NULL;        // Return NULL as ArgList does not return an instruction
     }
 
-    // Generate the call instruction and store the result in a temporary variable
-    instruction->op = strdup("call");
-    instruction->arg1 = strdup(expr->funcCall.name);
-    instruction->result = createTempVar(); // Temporary variable to hold function return value
-    appendTAC(&tacHead, instruction);
+        case NodeType_FuncCall: {
+            ASTNode* argNode = expr->funcCall.args;
+            int argCount = 0;
 
-    return instruction; // Return the TAC instruction containing the function call result
-}
+            // Collect arguments into a list
+            ASTNode* argList[10]; // Adjust size as needed
+            while (argNode && argCount < 10) {
+                argList[argCount++] = argNode->argList.arg;
+                argNode = argNode->argList.next;
+            }
+
+            // Generate assignments for arguments
+            for (int i = 0; i < argCount; i++) {
+                TAC* argTAC = generateTACForExpr(argList[i]);
+                if (!argTAC || !argTAC->result) {
+                    fprintf(stderr, "Error: TAC generation failed for function call argument.\n");
+                    free(instruction);
+                    return NULL;
+                }
+
+                char paramName[20];
+                snprintf(paramName, sizeof(paramName), "param%d", i + 1);
+
+                // Generate assignment: paramX = arg
+                TAC* assignArg = (TAC*)malloc(sizeof(TAC));
+                assignArg->op = strdup("=");
+                assignArg->arg1 = strdup(argTAC->result);
+                assignArg->result = strdup(paramName);
+                assignArg->next = NULL;
+                appendTAC(&tacHead, assignArg);
+            }
+
+            // Generate the call instruction
+            instruction->op = strdup("call");
+            instruction->arg1 = strdup(expr->funcCall.name);
+            instruction->result = createTempVar(); // Temporary variable to hold function return value
+            instruction->next = NULL;
+            appendTAC(&tacHead, instruction);
+
+            return instruction; // Return the TAC instruction containing the function call result
+        }
+
 
         default:
             fprintf(stderr, "Unsupported node type in expression (Node Type: %d)\n", expr->type);
@@ -396,12 +487,13 @@ char* createOperand(ASTNode* node) {
         case NodeType_ArrayAccess: {
             // Generate TAC for array access
             TAC* arrayAccessTAC = generateTACForExpr(node);
-            if (!arrayAccessTAC) {
+            if (!arrayAccessTAC || !arrayAccessTAC->result) {
                 fprintf(stderr, "Error generating TAC for array access expression\n");
                 return NULL;
             }
-            return arrayAccessTAC->result;
+            return strdup(arrayAccessTAC->result);
         }
+
 
         default:
             fprintf(stderr, "Unsupported node type in operand creation (Node Type: %d)\n", node->type);
@@ -470,7 +562,15 @@ void printTACToFile(const char* filename, TAC* tac) {
             //fprintf(file, "// op: %s\n", current->op);  // Print the operation type as a comment for debugging
             if (strcmp(current->op, "write") == 0) {
                 fprintf(file, "%s %s\n", current->op, current->arg1);
-            } else if (strcmp(current->op, "=") == 0) {
+            }else if (strcmp(current->op, "return") == 0) {
+                if (current->arg2) {
+                    fprintf(file, "return %s %s\n", current->arg1 ? current->arg1 : "", current->arg2);
+                } else {
+                    fprintf(file, "return %s\n", current->arg1 ? current->arg1 : "");
+                }
+            }
+
+             else if (strcmp(current->op, "=") == 0) {
                 fprintf(file, "%s = %s\n", current->result, current->arg1);
             } else if (strcmp(current->op, "call") == 0) {
                 fprintf(file, "%s = call %s\n", current->result, current->arg1);
@@ -478,11 +578,12 @@ void printTACToFile(const char* filename, TAC* tac) {
                 fprintf(file, "push %s\n", current->arg1);
             } else if (strcmp(current->op, "return") == 0) {
                 fprintf(file, "return %s\n", current->arg1 ? current->arg1 : "");
-            } else if (strcmp(current->op, "array_access") == 0) {
+            } 
+            // In printTACToFile:
+            else if (strcmp(current->op, "array_access") == 0) {
                 fprintf(file, "%s = %s[%s]\n", current->result, current->arg1, current->arg2);
-            } else if (strcmp(current->op, "array_assign") == 0) {
-                // Handle array assignment in file output
-                fprintf(file, "%s[%s] = %s\n", current->result, current->arg2, current->arg1);
+            } else if (current->result && strstr(current->result, "[")) {
+                fprintf(file, "%s = %s\n", current->result, current->arg1);
             } else {
                 // General case for binary or other operations
                 fprintf(file, "%s = %s %s %s\n", current->result, current->arg1, current->op, current->arg2);
@@ -533,21 +634,12 @@ void deallocateTempVar(int tempVars[], int index) {
 }   
 
 void appendTAC(TAC** head, TAC* newInstruction) {
-    // Check if the instruction is specifically for array assignment
-    if (newInstruction->op && strcmp(newInstruction->op, "array_assign") == 0) {
-        // Format the debug output specifically for array assignments
-        printf("Appending array assignment TAC: %s[%s] = %s\n", 
-               newInstruction->result ? newInstruction->result : "(null)", 
-               newInstruction->arg2 ? newInstruction->arg2 : "(null)", 
-               newInstruction->arg1 ? newInstruction->arg1 : "(null)");
-    } else {
-        // General debug output for other TAC instructions
-        printf("Appended TAC: %s %s %s -> %s\n", 
-               newInstruction->op ? newInstruction->op : "(null)", 
-               newInstruction->arg1 ? newInstruction->arg1 : "(null)", 
-               newInstruction->arg2 ? newInstruction->arg2 : "(null)", 
-               newInstruction->result ? newInstruction->result : "(null)");
-    }
+    // General debug output for TAC instructions
+    printf("Appended TAC: %s %s %s -> %s\n",
+           newInstruction->op ? newInstruction->op : "(null)",
+           newInstruction->arg1 ? newInstruction->arg1 : "(null)",
+           newInstruction->arg2 ? newInstruction->arg2 : "(null)",
+           newInstruction->result ? newInstruction->result : "(null)");
 
     // Append the new instruction to the end of the TAC list
     if (!*head) {
@@ -560,5 +652,6 @@ void appendTAC(TAC** head, TAC* newInstruction) {
         current->next = newInstruction;
     }
 }
+
 
 

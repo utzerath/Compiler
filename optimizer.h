@@ -22,6 +22,10 @@ Basic Optimizations:
 #include <stdbool.h>
 #include <ctype.h>
 
+// Forward declarations for functions used before they are defined
+void addToFreeList(void* ptr);
+bool parseArrayAccess(const char* expr, char** arrayName, char** index);
+
 // Optimization function to be called to start optimizing the TAC list
 void optimizeTAC(TAC** head);
 

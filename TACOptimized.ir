@@ -1,8 +1,6 @@
-t0 = 10 * t
-t1 = t0 + d
-arr = 1 array_assign 1
-5 push
-3 push
-t4 = workplz call
-p = t4
+p = 53
+optopus1 = 9
+arr2 = 10
+write optopus1
+write arr2
 write p

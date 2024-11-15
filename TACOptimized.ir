@@ -1,6 +1,6 @@
-p = 53
-optopus1 = 9
-arr2 = 10
-write optopus1
-write arr2
-write p
+value = param1
+value return getX
+t0 = 4
+t0 return getY
+flag = (null)
+write result

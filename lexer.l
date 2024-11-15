@@ -35,7 +35,87 @@ ws          {delim}+
                 }
             }
         }
+"if"    {words++; chars += yyleng;
+            printf("%s : IF\n", yytext);
+            yylval.string = strdup(yytext); 
+            return IF;
+        }
 
+"else"  {words++; chars += yyleng;
+            printf("%s : ELSE\n", yytext);
+            yylval.string = strdup(yytext); 
+            return ELSE;
+        }
+
+"&&"    {chars += yyleng;
+            printf("%s : AND\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return AND;
+        }
+
+"||"    {chars += yyleng;
+            printf("%s : OR\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return OR;
+        }
+"bool"  {words++; chars += yyleng;
+            printf("%s : BOOL\n", yytext);
+            yylval.string = strdup(yytext); 
+            return TYPE_BOOL;
+        }
+
+"true"  {chars += yyleng;
+            printf("%s : TRUE\n", yytext);
+            yylval.number = 1;  // Using 1 to represent true
+            return BOOL_LITERAL;
+        }
+
+"false" {chars += yyleng;
+            printf("%s : FALSE\n", yytext);
+            yylval.number = 0;  // Using 0 to represent false
+            return BOOL_LITERAL;
+        }
+"!"     {chars++;
+            printf("%s : NOT\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return NOT;
+        }
+"=="    {chars += yyleng;
+            printf("%s : EQUALS\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return EQUALS;
+        }
+
+"!="    {chars += yyleng;
+            printf("%s : NOT_EQUALS\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return NOT_EQUALS;
+        }
+
+"<"     {chars++;
+            printf("%s : LESS_THAN\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return LESS_THAN;
+        }
+
+">"     {chars++;
+            printf("%s : GREATER_THAN\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return GREATER_THAN;
+        }
+
+"<="    {chars += yyleng;
+            printf("%s : LESS_EQUAL\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return LESS_EQUAL;
+        }
+
+">="    {chars += yyleng;
+            printf("%s : GREATER_EQUAL\n", yytext);
+            yylval.operator = strdup(yytext); 
+            return GREATER_EQUAL;
+        }
+        
 "int"   {words++; chars += yyleng;
             printf("%s : TYPE\n", yytext);
             yylval.string = strdup(yytext); 

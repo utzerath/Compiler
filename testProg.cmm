@@ -1,23 +1,23 @@
-int l;
-l = 10;
-
-
 void main() {
-    int p;
-    int s;
-    int arr[2];
-    int optopus[5];
-    p = workplz(5, 3);
-    optopus[1] = 9;
-    arr[2] = 1 + optopus[1];
-    write optopus[1];
-    write arr[2];
-    write p;
+    int result;
+    bool flag;
+    flag = true;
+
+    if (getX(10) > 5) {         
+        if (getY() < 3) {
+            result = getY();
+        } else {
+            result = getX(5);    
+        }
+    } else {
+        result = 0;
+    }
+
+    write result;
 }
-int workplz(int t, int d) {
-    int r;
-    int q;
-    r = 10;
-    q = (r * t) + d;
-    return q;
+int getX(int value) {            
+    return value;            
+}
+int getY() {
+    return 4;
 }

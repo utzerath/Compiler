@@ -146,8 +146,6 @@ void traverseAST(ASTNode* node, int level) {
                 printf("Warning: No more parameters in the Parameter List.\n");
             }
             break;
-
-
         case NodeType_FuncDeclList: {
         printf("Function Declaration List:\n");
         ASTNode* currentList = node;
@@ -215,7 +213,40 @@ void traverseAST(ASTNode* node, int level) {
                 traverseAST(node->argList.next, level + 1); // Traverse the next argument
             }
             break;
+        case NodeType_IfStmt:
+            printf("IfStmt\n");
+            printf("-- Condition:\n");
+            traverseAST(node->ifStmt.condition, level + 1);
+            printf("-- True Branch:\n");
+            traverseAST(node->ifStmt.trueBranch, level + 1);
+            if (node->ifStmt.falseBranch != NULL) {
+                printf("-- False Branch:\n");
+                traverseAST(node->ifStmt.falseBranch, level + 1);
+            }
+            break;
 
+        case NodeType_LogicalOp:
+            printf("LogicalOp: %s\n", node->logicalOp.operator);
+            printf("-- Left Operand:\n");
+            traverseAST(node->logicalOp.left, level + 1);
+            if (node->logicalOp.right != NULL) {
+                printf("-- Right Operand:\n");
+                traverseAST(node->logicalOp.right, level + 1);
+            }
+            break;
+
+        case NodeType_ComparisonOp:
+            printf("ComparisonOp: %s\n", node->comparisonOp.operator);
+            printf("-- Left Operand:\n");
+            traverseAST(node->comparisonOp.left, level + 1);
+            printf("-- Right Operand:\n");
+            traverseAST(node->comparisonOp.right, level + 1);
+            break;
+
+        case NodeType_BoolLiteral:
+            printf("Bool: %s\n", node->boolLiteral.value ? "true" : "false");
+            break;
+            
         default:
             printf("Unknown node type: %d\n", node->type); // Print unknown node types
             return; // Stop further processing on invalid nodes
@@ -438,7 +469,23 @@ ASTNode* createNode(NodeType type) {
             newNode->argList.arg = NULL; // Initialize argument node
             newNode->argList.next = NULL; // Initialize next argument
             break;
+        case NodeType_IfStmt:
+            freeAST(newNode->ifStmt.condition);
+            freeAST(newNode->ifStmt.trueBranch);
+            freeAST(newNode->ifStmt.falseBranch);
+            break;
 
+        case NodeType_LogicalOp:
+            free(newNode->logicalOp.operator); // Free the operator string
+            freeAST(newNode->logicalOp.left);
+            freeAST(newNode->logicalOp.right);
+            break;
+
+        case NodeType_ComparisonOp:
+            free(newNode->comparisonOp.operator); // Free the operator string
+            freeAST(newNode->comparisonOp.left);
+            freeAST(newNode->comparisonOp.right);
+            break;
         // Add cases for any additional node types you've defined
         default:
             break;
@@ -518,4 +565,49 @@ ASTNode* createReturnNode(ASTNode* expr) {
     return node;
 }
 
+
+// Function to create an if-statement node
+ASTNode* createIfNode(ASTNode* condition, ASTNode* trueBranch, ASTNode* falseBranch) {
+    ASTNode* node = createNode(NodeType_IfStmt);
+    node->ifStmt.condition = condition;
+    node->ifStmt.trueBranch = trueBranch;
+    node->ifStmt.falseBranch = falseBranch;
+    printf("Created IfStmt node at %p\n", (void*)node);
+    return node;
+}
+
+// Function to create a logical operation node (e.g., &&, ||, !)
+ASTNode* createLogicalNode(const char* operator, ASTNode* left, ASTNode* right) {
+    ASTNode* node = createNode(NodeType_LogicalOp);
+    node->logicalOp.operator = strdup(operator);  // Copy the operator string
+    node->logicalOp.left = left;
+    node->logicalOp.right = right;
+    printf("Created LogicalOp node '%s' at %p\n", operator, (void*)node);
+    return node;
+}
+
+// Function to create a comparison operation node (e.g., ==, <, >)
+ASTNode* createComparisonNode(const char* operator, ASTNode* left, ASTNode* right) {
+    ASTNode* node = createNode(NodeType_ComparisonOp);
+    node->comparisonOp.operator = strdup(operator);  // Copy the operator string
+    node->comparisonOp.left = left;
+    node->comparisonOp.right = right;
+    printf("Created ComparisonOp node '%s' at %p\n", operator, (void*)node);
+    return node;
+}
+
+// Function to create an identifier node
+ASTNode* createIDNode(const char* name) {
+    ASTNode* node = createNode(NodeType_SimpleID);
+    node->simpleID.name = strdup(name); // Copy the identifier name
+    printf("Created IDNode for identifier '%s' at %p\n", name, (void*)node);
+    return node;
+}
+
+// Function to create a boolean literal node
+ASTNode* createBoolNode(int value) {
+    ASTNode* node = createNode(NodeType_BoolLiteral);  // Use NodeType_BoolLiteral
+    node->boolLiteral.value = value;                   // Set to 1 for true, 0 for false
+    return node;
+}
 

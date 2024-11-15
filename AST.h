@@ -25,7 +25,11 @@ typedef enum {
     NodeType_ReturnStmt,
     NodeType_Param,
     NodeType_ArgList,
-    NodeType_MainFunc
+    NodeType_MainFunc,
+    NodeType_IfStmt,          // New node type for if statements
+    NodeType_LogicalOp,       // New node type for logical operations
+    NodeType_ComparisonOp,   // New node type for comparison operations
+    NodeType_BoolLiteral
 } NodeType;
 
 // Single typedef and struct definition for ASTNode
@@ -89,21 +93,24 @@ typedef struct ASTNode {
             char* varName;
             int size;
         } arrayDecl;
-        
+
         struct {
             char* arrayName;
             struct ASTNode* index;
         } arrayAccess;
+
         struct {
-            struct ASTNode* stmtList;       // Main function's statement list
-        } mainFunc; 
+            struct ASTNode* stmtList;  // Main function's statement list
+        } mainFunc;
+
         struct {
-            struct ASTNode* paramList; // This will hold a linked list of parameters as ASTNodes
-            char* returnType;          // Return type for function declaration
-            char* name;                // Function name
-            struct ASTNode* stmtList;  // Function body
-            struct ASTNode* returnStmt; // Return statement if any
+            struct ASTNode* paramList;
+            char* returnType;
+            char* name;
+            struct ASTNode* stmtList;
+            struct ASTNode* returnStmt;
         } funcDecl;
+
         struct {
             struct ASTNode* funcDecl;
             struct ASTNode* funcDeclList;
@@ -132,6 +139,33 @@ typedef struct ASTNode {
             struct ASTNode* arg;
             struct ASTNode* next;
         } argList;
+
+        // New fields for `if` statements
+        struct {
+            struct ASTNode* condition;    // The expression condition
+            struct ASTNode* trueBranch;   // Statement to execute if true
+            struct ASTNode* falseBranch;  // Optional else statement
+        } ifStmt;
+
+        // New fields for logical operations (e.g., `&&`, `||`, `!`)
+        struct {
+            struct ASTNode* left;         // Left operand
+            struct ASTNode* right;        // Right operand (NULL if unary, e.g., `!`)
+            char* operator;               // The operator as a string (e.g., "&&")
+        } logicalOp;
+
+        // New fields for comparison operations (e.g., `==`, `<`, `>`)
+        struct {
+            struct ASTNode* left;         // Left operand
+            struct ASTNode* right;        // Right operand
+            char* operator;               // The operator as a string (e.g., "==")
+        } comparisonOp;
+
+        // New fields for boolean literals (true or false)
+        struct {
+            int value;    // 1 for true, 0 for false
+        } boolLiteral;
+
     };
 } ASTNode;
 
@@ -145,9 +179,14 @@ ASTNode* createArgList(ASTNode* arg, ASTNode* next);
 ASTNode* createParamList(ASTNode* param);
 ASTNode* createParamNode(char* varType, char* varName);
 ASTNode* createReturnNode(ASTNode* expr);
-// Change this line in AST.h
 ASTNode* createParamListNode(ASTNode* param, ASTNode* nextParamList);
 
+// New function prototypes for conditional, logical, and comparison nodes
+ASTNode* createIfNode(ASTNode* condition, ASTNode* trueBranch, ASTNode* falseBranch);
+ASTNode* createLogicalNode(const char* operator, ASTNode* left, ASTNode* right);
+ASTNode* createComparisonNode(const char* operator, ASTNode* left, ASTNode* right);
+ASTNode* createIDNode(const char* name);
+ASTNode* createBoolNode(int value);
 
 void freeAST(ASTNode* node);
 void traverseAST(ASTNode* node, int level);

@@ -53,6 +53,14 @@ Symbol* symbol = NULL;
 %token <string> VOID
 %token COMMA  // Add COMMA token
 %token MAIN
+%token BOOL_LITERAL  // Token for 'true' and 'false'
+%token TYPE_BOOL     // Represents `bool`
+
+
+
+
+// Tokens for conditional statements and logical operators
+%token IF ELSE AND OR NOT EQUALS NOT_EQUALS LESS_THAN GREATER_THAN LESS_EQUAL GREATER_EQUAL
 
 %type <ast> Program
 %type <ast> FuncDeclList FuncDecl ParamList Param ReturnStmt FuncCall ArgList VarDecl VarDeclList Stmt StmtList Expr LValue
@@ -60,14 +68,22 @@ Symbol* symbol = NULL;
 %type <character> BinOp
 %type <ast> scope_enter scope_exit SetFunctionName MainFunc
 %type <string> ReturnType
+%type <ast> IfStmt
+%type <number> BOOL_LITERAL
+%type <string> Type
+
 
 
 
 
 %start Program
 
+%left OR
+%left AND
+%left EQUALS NOT_EQUALS LESS_THAN GREATER_THAN LESS_EQUAL GREATER_EQUAL
 %left PLUS MINUS
 %left MULTIPLY DIVIDE
+%right NOT
 
 %%
 Program:
@@ -260,14 +276,14 @@ VarDeclList:
 
 
 VarDecl:
-    TYPE ID SEMICOLON {
+    Type ID SEMICOLON {
         printf("PARSER: Recognized variable declaration: %s of type %s in function %s\n", $2, $1, currentFunctionName ? currentFunctionName : "global");
         addSymbol(symTab, $2, $1, 0, NULL, currentFunctionName); // Use currentFunctionName for local variables, NULL for global
         $$ = createNode(NodeType_VarDecl);  // AST node creation
         $$->varDecl.varType = strdup($1);
         $$->varDecl.varName = strdup($2);
     }
-    | TYPE ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON {
+    | Type ID OPEN_BRACKET NUMBER CLOSE_BRACKET SEMICOLON {
         printf("PARSER: Recognized array declaration: %s[%d]\n", $2, $4);
         symbol = lookupSymbol(symTab, $2, 1);
         if (symbol != NULL) {
@@ -303,31 +319,48 @@ StmtList:
 ;
 
 
+Stmt: 
+      LValue EQ Expr SEMICOLON {
+          printf("PARSER: Recognized assignment statement\n");
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NodeType_AssignStmt;
+          $$->assignStmt.lvalue = $1;
+          $$->assignStmt.expr = $3;
+      }
+    | WRITE Expr SEMICOLON { 
+          printf("PARSER: Recognized write statement\n");
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NodeType_WriteStmt;
+          $$->writeStmt.expr = $2;
+      }
+    | FuncCall SEMICOLON {
+          printf("PARSER: Recognized function call statement\n");
+          $$ = $1;
+      }
+    | OPEN_BRACE StmtList CLOSE_BRACE {
+          printf("PARSER: Recognized a block statement\n");
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NodeType_BlockStmt;
+          $$->blockStmt.stmtList = $2;
+      }
+    | IfStmt { 
+          $$ = $1;  // Link `IfStmt` rule to `Stmt` for conditional handling
+      }
+;
+Type:
+    TYPE         { $$ = $1; }         // For standard types like `int`, `float`
+  | TYPE_BOOL    { $$ = "bool"; }     // For `bool` type
+;
 
-
-Stmt: LValue EQ Expr SEMICOLON {
-       printf("PARSER: Recognized assignment statement\n");
-       $$ = malloc(sizeof(ASTNode));
-       $$->type = NodeType_AssignStmt;
-       $$->assignStmt.lvalue = $1;
-       $$->assignStmt.expr = $3;
-     }
-   | WRITE Expr SEMICOLON { 
-       printf("PARSER: Recognized write statement\n");
-       $$ = malloc(sizeof(ASTNode));
-       $$->type = NodeType_WriteStmt;
-       $$->writeStmt.expr = $2;
-     }
-   | FuncCall SEMICOLON {
-       printf("PARSER: Recognized function call statement\n");
-       $$ = $1;
-     }
-   | OPEN_BRACE StmtList CLOSE_BRACE {
-       printf("PARSER: Recognized a block statement\n");
-       $$ = malloc(sizeof(ASTNode));
-       $$->type = NodeType_BlockStmt;
-       $$->blockStmt.stmtList = $2;
-     }
+IfStmt: 
+      IF OPEN_PAREN Expr CLOSE_PAREN Stmt {
+          printf("PARSER: Recognized if statement\n");
+          $$ = createIfNode($3, $5, NULL);  // AST node with condition, true branch, and NULL for else
+      }
+    | IF OPEN_PAREN Expr CLOSE_PAREN Stmt ELSE Stmt {
+          printf("PARSER: Recognized if-else statement\n");
+          $$ = createIfNode($3, $5, $7);  // AST node with condition, true branch, and else branch
+      }
 ;
 
 LValue: ID {
@@ -346,42 +379,80 @@ LValue: ID {
 ;
 
 Expr:
-    FuncCall { 
-        $$ = $1;  // Treat the function call as an expression
-    }
+      FuncCall { 
+          $$ = $1;  // Treat the function call as an expression
+      }
     | Expr BinOp Expr {
-        printf("PARSER: Recognized binary expression\n");
-        $$ = malloc(sizeof(ASTNode));
-        $$->type = NodeType_BinOp;
-        $$->binOp.left = $1;
-        $$->binOp.right = $3;
-        $$->binOp.operator = $2;
-    }
+          printf("PARSER: Recognized binary expression\n");
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NodeType_BinOp;
+          $$->binOp.left = $1;
+          $$->binOp.right = $3;
+          $$->binOp.operator = $2;
+      }
+    | Expr AND Expr {
+          printf("PARSER: Recognized logical AND\n");
+          $$ = createLogicalNode("&&", $1, $3); // Create logical AND AST node
+      }
+    | Expr OR Expr {
+          printf("PARSER: Recognized logical OR\n");
+          $$ = createLogicalNode("||", $1, $3); // Create logical OR AST node
+      }
+    | NOT Expr {
+          printf("PARSER: Recognized logical NOT\n");
+          $$ = createLogicalNode("!", $2, NULL); // Create logical NOT AST node
+      }
+    | Expr EQUALS Expr {
+          printf("PARSER: Recognized equality check\n");
+          $$ = createComparisonNode("==", $1, $3);
+      }
+    | Expr NOT_EQUALS Expr {
+          printf("PARSER: Recognized inequality check\n");
+          $$ = createComparisonNode("!=", $1, $3);
+      }
+    | Expr LESS_THAN Expr {
+          printf("PARSER: Recognized less-than comparison\n");
+          $$ = createComparisonNode("<", $1, $3);
+      }
+    | Expr GREATER_THAN Expr {
+          printf("PARSER: Recognized greater-than comparison\n");
+          $$ = createComparisonNode(">", $1, $3);
+      }
+    | Expr LESS_EQUAL Expr {
+          printf("PARSER: Recognized less-than-or-equal comparison\n");
+          $$ = createComparisonNode("<=", $1, $3);
+      }
+    | Expr GREATER_EQUAL Expr {
+          printf("PARSER: Recognized greater-than-or-equal comparison\n");
+          $$ = createComparisonNode(">=", $1, $3);
+      }
+    | BOOL_LITERAL {
+          printf("PARSER: Recognized boolean literal: %s\n", $1 ? "true" : "false");
+          $$ = createBoolNode($1); // Add boolean literal node (true or false)
+      }
     | NUMBER {
-        printf("PARSER: Recognized integer\n");
-        $$ = createIntNode($1);
-    }
+          printf("PARSER: Recognized integer\n");
+          $$ = createIntNode($1);
+      }
     | FLOAT_LITERAL {
-        printf("PARSER: Recognized float\n");
-        $$ = createFloatNode($1);
-    }
+          printf("PARSER: Recognized float\n");
+          $$ = createFloatNode($1);
+      }
     | ID {
-        printf("PARSER: Recognized id\n");
-        $$ = malloc(sizeof(ASTNode));
-        $$->type = NodeType_SimpleID;
-        $$->simpleID.name = strdup($1);
-    }
+          printf("PARSER: Recognized id\n");
+          $$ = createIDNode($1);
+      }
     | ID OPEN_BRACKET Expr CLOSE_BRACKET {
-        printf("PARSER: Recognized array access: %s[...]\n", $1);
-        $$ = malloc(sizeof(ASTNode));
-        $$->type = NodeType_ArrayAccess;
-        $$->arrayAccess.arrayName = strdup($1);
-        $$->arrayAccess.index = $3;
-    }
+          printf("PARSER: Recognized array access: %s[...]\n", $1);
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NodeType_ArrayAccess;
+          $$->arrayAccess.arrayName = strdup($1);
+          $$->arrayAccess.index = $3;
+      }
     | OPEN_PAREN Expr CLOSE_PAREN {
-        printf("PARSER: Recognized parenthesized expression\n");
-        $$ = $2;  // Just return the expression inside parentheses
-    }
+          printf("PARSER: Recognized parenthesized expression\n");
+          $$ = $2;
+      }
 ;
 
 
@@ -437,7 +508,7 @@ int main() {
         printf("\n=== TAC GENERATION ===\n");
         printTACToFile("TAC.ir", tacHead);
         printf("\n=== CODE OPTIMIZATION ===\n");
-        optimizeTAC(&tacHead);
+        //optimizeTAC(&tacHead);
         printOptimizedTAC("TACOptimized.ir", tacHead);
         printf("\n=== CODE GENERATION ===\n");
         initCodeGenerator("output.s");

@@ -1,23 +1,24 @@
 void main() {
-    int result;
-    bool flag;
-    flag = true;
+    bool a;
+    bool b;
+    bool c;
+    int m;
+    a = true;
+    b = false;
 
-    if (getX(10) > 5) {         
-        if (getY() < 3) {
-            result = getY();
-        } else {
-            result = getX(5);    
-        }
+    if (a && !b) {
+        write a;
     } else {
-        result = 0;
+        write b;
     }
 
-    write result;
+    c = a || b;
+    if (c) {
+        m = work(5);
+        write m;
+    }
 }
-int getX(int value) {            
-    return value;            
-}
-int getY() {
-    return 4;
+int work(int x)
+{
+    return 10;
 }

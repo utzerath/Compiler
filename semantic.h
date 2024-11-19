@@ -3,6 +3,8 @@
 
 #include "AST.h"         // Assuming this includes the definition of ASTNode
 #include "symbolTable.h" // Assuming this includes the definition of SymbolTable
+#include <stdbool.h>
+
 
 // Define a structure for TAC instructions
 typedef struct TAC {
@@ -30,4 +32,10 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab);
  // Perform semantic analysis           // Promote an int operand to float
 // Add this declaration to the top of your semantic.c file
 char* promoteIntToFloat(char* intOperand);
+bool isBooleanType(ASTNode* node, SymbolTable* symTab);
+bool isNumericType(ASTNode* node, SymbolTable* symTab);
+const char* getNodeType(ASTNode* node);
+bool areComparableTypes(ASTNode* left, ASTNode* right, SymbolTable* symTab);
+void appendLabelTAC(const char* label);
+char* createLabel();
 #endif // SEMANTIC_H

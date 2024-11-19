@@ -67,7 +67,7 @@ typedef struct ASTNode {
         struct {
             struct ASTNode* left;
             struct ASTNode* right;
-            char operator;
+            int operator;
         } binOp;
 
         struct {

@@ -55,6 +55,10 @@ Symbol* symbol = NULL;
 %token MAIN
 %token BOOL_LITERAL  // Token for 'true' and 'false'
 %token TYPE_BOOL     // Represents `bool`
+%token AND_OP "&&"
+%token OR_OP "||"
+%token NOT_OP "!"
+
 
 
 

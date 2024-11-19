@@ -1,6 +1,26 @@
-value = param1
-return value getX
-t0 = 4
-return t0 getY
-flag = (null)
-write result
+x = param1
+t0 = 10
+return t0
+a = true
+b = false
+t1 = ! b
+t2 = a && t1
+if t2 L0
+goto L2
+label L0
+write a
+goto L1
+label L2
+write b
+label L1
+t3 = a || b
+c = t3
+if c L3
+goto L4
+label L3
+t4 = 5
+param1 = t4
+t5 = call work
+m = t5
+write m
+label L4

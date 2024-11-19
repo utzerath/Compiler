@@ -62,17 +62,20 @@
      MAIN = 278,
      BOOL_LITERAL = 279,
      TYPE_BOOL = 280,
-     IF = 281,
-     ELSE = 282,
-     AND = 283,
-     OR = 284,
-     NOT = 285,
-     EQUALS = 286,
-     NOT_EQUALS = 287,
-     LESS_THAN = 288,
-     GREATER_THAN = 289,
-     LESS_EQUAL = 290,
-     GREATER_EQUAL = 291
+     AND_OP = 281,
+     OR_OP = 282,
+     NOT_OP = 283,
+     IF = 284,
+     ELSE = 285,
+     AND = 286,
+     OR = 287,
+     NOT = 288,
+     EQUALS = 289,
+     NOT_EQUALS = 290,
+     LESS_THAN = 291,
+     GREATER_THAN = 292,
+     LESS_EQUAL = 293,
+     GREATER_EQUAL = 294
    };
 #endif
 /* Tokens.  */
@@ -99,17 +102,20 @@
 #define MAIN 278
 #define BOOL_LITERAL 279
 #define TYPE_BOOL 280
-#define IF 281
-#define ELSE 282
-#define AND 283
-#define OR 284
-#define NOT 285
-#define EQUALS 286
-#define NOT_EQUALS 287
-#define LESS_THAN 288
-#define GREATER_THAN 289
-#define LESS_EQUAL 290
-#define GREATER_EQUAL 291
+#define AND_OP 281
+#define OR_OP 282
+#define NOT_OP 283
+#define IF 284
+#define ELSE 285
+#define AND 286
+#define OR 287
+#define NOT 288
+#define EQUALS 289
+#define NOT_EQUALS 290
+#define LESS_THAN 291
+#define GREATER_THAN 292
+#define LESS_EQUAL 293
+#define GREATER_EQUAL 294
 
 
 
@@ -126,7 +132,7 @@ typedef union YYSTYPE
     struct ASTNode* ast; // Use ASTNode for representing AST parts, including function params and list nodes
 }
 /* Line 1529 of yacc.c.  */
-#line 130 "parser.tab.h"
+#line 136 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

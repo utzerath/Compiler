@@ -3,8 +3,8 @@ t0 = 10
 return t0
 a = true
 b = false
-t1 = ! b
-t2 = a && t1
+t1 = true
+t2 = true && true
 if t2 L0
 goto L2
 label L0

@@ -351,6 +351,8 @@ bool isNumericConstant(const char* str) {
     return isConstant(str) || isFloatConstant(str);
 }
 
+
+
 // Utility function to check if a string is a valid float constant
 bool isFloatConstant(const char* str) {
     if (str == NULL || *str == '\0') {
@@ -415,6 +417,15 @@ bool isConstant(const char* str) {
     // If we reached the end, it's a valid constant
     return *str == '\0';
 }
+
+// Utility function to check if a string is a boolean constant ("true" or "false")
+bool isBooleanConstant(const char* str) {
+    if (str == NULL) return false;
+    return strcmp(str, "true") == 0 || strcmp(str, "false") == 0;
+}
+
+
+
 
 // Utility function to parse array access expressions like "arr[0]"
 bool parseArrayAccess(const char* expr, char** arrayName, char** index) {
@@ -904,11 +915,9 @@ bool constantPropagation(TAC** head) {
 
         // Existing logic for operations
         // If the operation is '=', handle assignments
-        // Handle '=' assignments
-        // Handle '=' assignments
         if (current->op != NULL && strcmp(current->op, "=") == 0) {
                 // Attempt to replace arg1 if it's a variable with a known constant value
-                if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
+                if (current->arg1 != NULL && !isNumericConstant(current->arg1) && !isBooleanConstant(current->arg1)) {
                     VarValue* var = varTable;
                     while (var != NULL) {
                         if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
@@ -922,7 +931,7 @@ bool constantPropagation(TAC** head) {
                 }
 
                 // Now, check if arg1 is a constant (after possible substitution)
-                if (isNumericConstant(current->arg1)) {
+                if (isNumericConstant(current->arg1) || isBooleanConstant(current->arg1)) {
                     // Map result variable to constant value
                     if (current->result != NULL && strlen(current->result) > 0) {
                         // Update or add the mapping
@@ -1004,7 +1013,7 @@ bool constantPropagation(TAC** head) {
         else {
                 // For other operations, attempt to replace arg1 and arg2 with constants
                 // Replace arg1 if it's a variable with a known constant value
-                if (current->arg1 != NULL && !isNumericConstant(current->arg1)) {
+                if (current->arg1 != NULL && !isNumericConstant(current->arg1) && !isBooleanConstant(current->arg1)) {
                     VarValue* var = varTable;
                     while (var != NULL) {
                         if (var->index == NULL && strcmp(current->arg1, var->varName) == 0) {
@@ -1018,7 +1027,7 @@ bool constantPropagation(TAC** head) {
                 }
 
                 // Replace arg2 if it's a variable with a known constant value
-                if (current->arg2 != NULL && !isNumericConstant(current->arg2)) {
+                if (current->arg2 != NULL && !isNumericConstant(current->arg2) && !isBooleanConstant(current->arg2)) {
                     VarValue* var = varTable;
                     while (var != NULL) {
                         if (var->index == NULL && strcmp(current->arg2, var->varName) == 0) {
@@ -1028,6 +1037,62 @@ bool constantPropagation(TAC** head) {
                             break;
                         }
                         var = var->next;
+                    }
+                }
+
+                // Now, if the operation is a logical operation, and both arguments are constants, we can compute the result
+                if ((strcmp(current->op, "!") == 0 || strcmp(current->op, "&&") == 0 || strcmp(current->op, "||") == 0) &&
+                    (isBooleanConstant(current->arg1)) &&
+                    (current->arg2 == NULL || isBooleanConstant(current->arg2))) {
+
+                    bool left = strcmp(current->arg1, "true") == 0;
+                    bool right = current->arg2 ? (strcmp(current->arg2, "true") == 0) : false;
+                    bool result;
+
+                    if (strcmp(current->op, "!") == 0) {
+                        result = !left;
+                    } else if (strcmp(current->op, "&&") == 0) {
+                        result = left && right;
+                    } else if (strcmp(current->op, "||") == 0) {
+                        result = left || right;
+                    } else {
+                        // Unsupported logical operator
+                        current = current->next;
+                        continue;
+                    }
+
+                    // Replace the operation with the resulting constant
+                    safeStrReplace(&current->arg1, result ? "true" : "false");
+                    safeStrReplace(&current->op, "=");
+                    safeStrReplace(&current->arg2, NULL);
+                    changed = localChanged = true;
+
+                    // Map the result variable to the constant value
+                    if (current->result != NULL && strlen(current->result) > 0) {
+                        // Update or add the mapping
+                        VarValue* var = varTable;
+                        bool found = false;
+                        while (var != NULL) {
+                            if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
+                                // Update existing entry
+                                free(var->value);
+                                var->value = strdup(current->arg1);
+                                found = true;
+                                printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                                break;
+                            }
+                            var = var->next;
+                        }
+                        if (!found) {
+                            // Add new entry to varTable
+                            VarValue* newVar = malloc(sizeof(VarValue));
+                            newVar->varName = strdup(current->result);
+                            newVar->index = NULL;  // Scalar variable
+                            newVar->value = strdup(current->arg1);
+                            newVar->next = varTable;
+                            varTable = newVar;
+                            printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
+                        }
                     }
                 }
 

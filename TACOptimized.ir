@@ -1,11 +1,6 @@
-x = param1
-t0 = 10
-t0 return work
 a = true
 b = false
-t1 = b !
-t2 = a && t1
-t2 if L0
+true if L0
 L2 goto
 L0 label
 write a
@@ -13,14 +8,9 @@ L1 goto
 L2 label
 write b
 L1 label
-t3 = a || b
-c = t3
-c if L3
+true if L3
 L4 goto
 L3 label
-t4 = 5
-param1 = t4
-t5 = work call
-m = t5
+m = 10
 write m
 L4 label

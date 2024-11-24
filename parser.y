@@ -512,7 +512,7 @@ int main() {
         printf("\n=== TAC GENERATION ===\n");
         printTACToFile("TAC.ir", tacHead);
         printf("\n=== CODE OPTIMIZATION ===\n");
-        //optimizeTAC(&tacHead);
+        optimizeTAC(&tacHead);
         printOptimizedTAC("TACOptimized.ir", tacHead);
         printf("\n=== CODE GENERATION ===\n");
         initCodeGenerator("output.s");

@@ -1,16 +1,4 @@
 a = true
-b = false
-true if L0
-L2 goto
-L0 label
 write a
-L1 goto
-L2 label
-write b
-L1 label
-true if L3
-L4 goto
-L3 label
 m = 10
 write m
-L4 label

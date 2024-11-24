@@ -424,6 +424,174 @@ bool isBooleanConstant(const char* str) {
     return strcmp(str, "true") == 0 || strcmp(str, "false") == 0;
 }
 
+bool evaluateBooleanConstant(const char* str) {
+    if (strcmp(str, "true") == 0) return true;
+    if (strcmp(str, "false") == 0) return false;
+    fprintf(stderr, "Error: Invalid boolean constant '%s'\n", str);
+    exit(EXIT_FAILURE);
+}
+
+void simplifyControlFlow(TAC** head) {
+    TAC* current = *head;
+    TAC* prev = NULL;
+
+    while (current != NULL) {
+        // Check for 'if' statements with constant conditions
+        if (current->op != NULL && strcmp(current->op, "if") == 0 && current->arg1 != NULL) {
+            if (isBooleanConstant(current->arg1)) {
+                bool conditionValue = evaluateBooleanConstant(current->arg1);
+
+                if (conditionValue) {
+                    // Condition is true; remove the 'if' and proceed to the target label
+                    TAC* temp = current;
+                    current = current->next;  // Move to the next instruction
+                    if (prev == NULL) {
+                        *head = current;
+                    } else {
+                        prev->next = current;
+                    }
+                    freeTACNode(temp);
+
+                    // Remove the 'goto' that represents the 'else' branch
+                    if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0) {
+                        temp = current;
+                        current = current->next;
+                        if (prev == NULL) {
+                            *head = current;
+                        } else {
+                            prev->next = current;
+                        }
+                        freeTACNode(temp);
+                    }
+                    continue;  // Continue without updating prev
+                } else {
+                    // Condition is false; remove the 'if' and skip the 'then' block
+                    TAC* temp = current;
+                    current = current->next;  // Move to the next instruction
+                    if (prev == NULL) {
+                        *head = current;
+                    } else {
+                        prev->next = current;
+                    }
+                    freeTACNode(temp);
+
+                    // Remove the code inside the 'then' block until the 'goto' (which skips over the 'else' block)
+                    while (current != NULL && !(current->op != NULL && strcmp(current->op, "goto") == 0)) {
+                        temp = current;
+                        current = current->next;
+                        if (prev == NULL) {
+                            *head = current;
+                        } else {
+                            prev->next = current;
+                        }
+                        freeTACNode(temp);
+                    }
+
+                    // Remove the 'goto' that skips over the 'else' block
+                    if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0) {
+                        temp = current;
+                        current = current->next;
+                        if (prev == NULL) {
+                            *head = current;
+                        } else {
+                            prev->next = current;
+                        }
+                        freeTACNode(temp);
+                    }
+                    continue;  // Continue without updating prev
+                }
+            }
+        }
+
+        // Remove unreachable code after unconditional 'goto'
+        if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0 && current->arg1 != NULL) {
+            char* targetLabel = current->arg1;
+            TAC* temp = current->next;
+
+            // Check if the target label is immediately next
+            if (temp != NULL && temp->op != NULL && strcmp(temp->op, "label") == 0 &&
+                strcmp(temp->arg1, targetLabel) == 0) {
+                // Remove both the 'goto' and the label
+                TAC* toDeleteGoto = current;
+                TAC* toDeleteLabel = temp;
+
+                current = temp->next;
+                if (prev == NULL) {
+                    *head = current;
+                } else {
+                    prev->next = current;
+                }
+
+                freeTACNode(toDeleteGoto);
+                freeTACNode(toDeleteLabel);
+
+                // Do not update prev, continue with the current instruction
+                continue;
+            } else {
+                // Remove code until we reach the target label
+                TAC* tempPrev = current;
+                bool labelFound = false;
+
+                while (temp != NULL) {
+                    if (temp->op != NULL && strcmp(temp->op, "label") == 0 &&
+                        strcmp(temp->arg1, targetLabel) == 0) {
+                        labelFound = true;
+                        break;
+                    } else {
+                        // Remove the current instruction as it's unreachable
+                        TAC* toDelete = temp;
+                        temp = temp->next;
+                        tempPrev->next = temp;
+                        freeTACNode(toDelete);
+                    }
+                }
+
+                if (!labelFound) {
+                    fprintf(stderr, "Error: Target label '%s' not found.\n", targetLabel);
+                    break;
+                }
+
+                current = tempPrev->next;
+                prev = tempPrev;
+                continue;
+            }
+        }
+
+        // Remove labels that are not targets of any jumps
+        if (current != NULL && current->op != NULL && strcmp(current->op, "label") == 0) {
+            bool isTarget = false;
+            // Check if any 'goto' or 'if' statements target this label
+            TAC* temp = *head;
+            while (temp != NULL) {
+                if (temp->op != NULL && (strcmp(temp->op, "goto") == 0 || strcmp(temp->op, "if") == 0)) {
+                    if ((temp->arg1 != NULL && strcmp(temp->arg1, current->arg1) == 0) ||
+                        (temp->arg2 != NULL && strcmp(temp->arg2, current->arg1) == 0)) {
+                        isTarget = true;
+                        break;
+                    }
+                }
+                temp = temp->next;
+            }
+            if (!isTarget) {
+                // Remove the label
+                TAC* toDelete = current;
+                current = current->next;
+                if (prev == NULL) {
+                    *head = current;
+                } else {
+                    prev->next = current;
+                }
+                freeTACNode(toDelete);
+                continue;  // Continue without updating prev
+            }
+        }
+
+        prev = current;
+        current = current->next;
+    }
+}
+
+
 
 
 
@@ -1155,6 +1323,8 @@ void optimizeTAC(TAC** head) {
             changed = true;
             printf("Constant folding applied\n");
         }
+        simplifyControlFlow(head);
+        printf("Control flow simplification applied\n");
 
         // Apply dead code elimination
         if (deadCodeElimination(head, false)) {
@@ -1164,6 +1334,7 @@ void optimizeTAC(TAC** head) {
         
 
     } while (changed);  // Repeat until no more changes are made
+
 
     deadCodeEliminationFinal(head, false);
 

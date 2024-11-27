@@ -1,15 +1,33 @@
 void main() {
-    int m;
-    int k;
+    int a;
+    float b;
+    int l;
+    bool result;
+    float c;
 
-    m = 10;
-    k = 10;
+    a = 10;
+    b = 15.5;
 
-    if (m > k) {
-        write m;
+    l = intfunc();
+
+    if (l == 10) {
+        write a;
     } else {
-        write k;
+        write b;
     }
-    
+
+    c = floatfunc();
+    if (c == 25.0) {
+        write c;
+    } else {
+        write b;
+    }
 }
 
+int intfunc() {
+    return 10;
+}
+
+float floatfunc() {
+    return 12.5 * 2;
+}

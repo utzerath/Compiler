@@ -209,34 +209,38 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             break;
 
         case NodeType_AssignStmt: {
-            printf("Generating TAC for assignment statement\n");
-            char* rhs = createOperand(node->assignStmt.expr);
-            char* lhsName = node->assignStmt.lvalue->simpleID.name;
+    printf("Generating TAC for assignment statement\n");
+    char* rhs = createOperand(node->assignStmt.expr);
+    char* lhsName = node->assignStmt.lvalue->simpleID.name;
 
-            // Check if LHS is a declared variable
-            Symbol* lhsSymbol = lookupSymbol(symTab, lhsName, 1);
-            if (!lhsSymbol) {
-                fprintf(stderr, "Semantic error: Variable %s not declared\n", lhsName);
-                return;
-            }
+    // Check if LHS is a declared variable
+    Symbol* lhsSymbol = lookupSymbol(symTab, lhsName, 1);
+    if (!lhsSymbol) {
+        fprintf(stderr, "Semantic error: Variable %s not declared\n", lhsName);
+        return;
+    }
 
-            // Type compatibility check
-            if (strcmp(lhsSymbol->type, "bool") == 0) {
-                if (node->assignStmt.expr->type != NodeType_BoolLiteral &&
-                    node->assignStmt.expr->type != NodeType_LogicalOp) {
-                    fprintf(stderr, "Semantic error: Assignment to boolean variable %s must be a boolean value\n", lhsName);
-                    return;
-                }
-            }
-
-            // Generate TAC for assignment
-            TAC* tac = (TAC*)malloc(sizeof(TAC));
-            tac->op = strdup("=");
-            tac->arg1 = rhs;
-            tac->result = strdup(lhsName);
-            appendTAC(&tacHead, tac);
-            break;
+    // Type compatibility check
+    if (strcmp(lhsSymbol->type, "bool") == 0) {
+        // Ensure RHS evaluates to a boolean
+        if (node->assignStmt.expr->type != NodeType_BoolLiteral &&
+            node->assignStmt.expr->type != NodeType_LogicalOp &&
+            node->assignStmt.expr->type != NodeType_BinOp) {
+            fprintf(stderr, "Semantic error: Assignment to boolean variable %s must be a boolean expression\n", lhsName);
+            return;
         }
+    }
+
+    // Generate TAC for assignment
+    TAC* tac = (TAC*)malloc(sizeof(TAC));
+    tac->op = strdup("=");
+    tac->arg1 = rhs;  // Fully evaluated RHS
+    tac->result = strdup(lhsName);  // LHS
+    appendTAC(&tacHead, tac);
+    break;
+}
+
+
 
         case NodeType_LogicalOp:
             printf("Performing semantic analysis on logical operation: %s\n", node->logicalOp.operator);
@@ -357,6 +361,8 @@ TAC* generateTACForExpr(ASTNode* expr) {
 
     printf("Generating TAC for Node Type: %d\n", expr->type);
     TAC* instruction = (TAC*)malloc(sizeof(TAC));
+    TAC* leftTAC = NULL;
+    TAC* rightTAC = NULL;
     if (!instruction) {
         fprintf(stderr, "Error: Memory allocation failed for TAC instruction.\n");
         return NULL;
@@ -388,52 +394,6 @@ TAC* generateTACForExpr(ASTNode* expr) {
             temp->next = NULL;
             return temp;
         }
-
-
-
-           case NodeType_BinOp: {
-    printf("Generating TAC for binary or logical operation: %c\n", expr->binOp.operator);
-
-    char* leftOperand = createOperand(expr->binOp.left);
-    char* rightOperand = createOperand(expr->binOp.right);
-
-    if (!leftOperand || !rightOperand) {
-        fprintf(stderr, "Error: Operand generation failed for BinOp.\n");
-        free(leftOperand);
-        free(rightOperand);
-        return NULL;
-    }
-
-    // Convert char operator to string
-    char opBuffer[2];
-    opBuffer[0] = expr->binOp.operator;
-    opBuffer[1] = '\0';
-
-    // Create a temporary variable for the result
-    char* result = createTempVar();
-
-    // Generate TAC for the operation
-    TAC* tac = (TAC*)malloc(sizeof(TAC));
-    if (strcmp(opBuffer, "&&") == 0 || strcmp(opBuffer, "||") == 0) {
-        tac->op = strdup(opBuffer);  // Logical operator ("&&", "||")
-    } else {
-        tac->op = strdup(
-            (strcmp(opBuffer, "+") == 0) ? "+" :
-            (strcmp(opBuffer, "-") == 0) ? "-" :
-            (strcmp(opBuffer, "*") == 0) ? "*" : "/"
-        );
-    }
-
-    tac->arg1 = leftOperand;
-    tac->arg2 = rightOperand;
-    tac->result = result;
-    appendTAC(&tacHead, tac);
-
-    return tac;
-}
-
-    
-
 
       case NodeType_ArrayAccess: {
         printf("Generating TAC for array access\n");
@@ -532,30 +492,118 @@ TAC* generateTACForExpr(ASTNode* expr) {
 
             return instruction; // Return the TAC instruction containing the function call result
         }
-        case NodeType_LogicalOp: {
-            printf("Generating TAC for logical operation: %s\n", expr->logicalOp.operator);
+     
+            case NodeType_BinOp: {
+            printf("Generating TAC for binary operation: %c\n", expr->binOp.operator);
 
-            char* leftOperand = createOperand(expr->logicalOp.left);
-            char* rightOperand = expr->logicalOp.right ? createOperand(expr->logicalOp.right) : NULL;
+            TAC* leftTAC = generateTACForExpr(expr->binOp.left);
+            TAC* rightTAC = generateTACForExpr(expr->binOp.right);
 
-            if (!leftOperand || (expr->logicalOp.right && !rightOperand)) {
-                fprintf(stderr, "Error: Operand generation failed for LogicalOp.\n");
-                free(leftOperand);
-                free(rightOperand);
+            char* leftResult = leftTAC ? leftTAC->result : createOperand(expr->binOp.left);
+            char* rightResult = rightTAC ? rightTAC->result : createOperand(expr->binOp.right);
+
+            TAC* tac = (TAC*)malloc(sizeof(TAC));
+            tac->op = strdup(
+                (expr->binOp.operator == '+') ? "+" :
+                (expr->binOp.operator == '-') ? "-" :
+                (expr->binOp.operator == '*') ? "*" :
+                (expr->binOp.operator == '/') ? "/" :
+                NULL
+            );
+
+            if (!tac->op) {
+                fprintf(stderr, "Unsupported binary operator: %c\n", expr->binOp.operator);
+                free(leftResult);
+                free(rightResult);
+                free(tac);
                 return NULL;
             }
 
-            // Create TAC for logical operation
-            TAC* tac = (TAC*)malloc(sizeof(TAC));
-            tac->op = strdup(expr->logicalOp.operator); // "&&", "||", or "!"
-            tac->arg1 = leftOperand;
-            tac->arg2 = rightOperand; // NULL for unary NOT
+            tac->arg1 = leftResult;
+            tac->arg2 = rightResult;
             tac->result = createTempVar();
             tac->next = NULL;
 
             appendTAC(&tacHead, tac);
+            printf("Generated TAC: %s = %s %s %s\n", tac->result, tac->arg1, tac->op, tac->arg2);
+
             return tac;
         }
+
+        case NodeType_ComparisonOp: {
+    printf("Generating TAC for comparison operation: %s\n", expr->comparisonOp.operator);
+
+    char* leftOperand = createOperand(expr->comparisonOp.left);
+    char* rightOperand = createOperand(expr->comparisonOp.right);
+
+    if (!leftOperand || !rightOperand) {
+        fprintf(stderr, "Error: Operand generation failed for ComparisonOp.\n");
+        free(leftOperand);
+        free(rightOperand);
+        return NULL;
+    }
+
+    TAC* tac = (TAC*)malloc(sizeof(TAC));
+    if (!tac) {
+        fprintf(stderr, "Memory allocation failed for TAC node.\n");
+        free(leftOperand);
+        free(rightOperand);
+        return NULL;
+    }
+
+    // Map multi-character operators
+    const char* operatorStr = 
+        (strcmp(expr->comparisonOp.operator, ">=") == 0) ? ">=" :
+        (strcmp(expr->comparisonOp.operator, "<=") == 0) ? "<=" :
+        (strcmp(expr->comparisonOp.operator, "==") == 0) ? "==" :
+        (strcmp(expr->comparisonOp.operator, "!=") == 0) ? "!=" :
+        (strcmp(expr->comparisonOp.operator, ">") == 0) ? ">" :
+        (strcmp(expr->comparisonOp.operator, "<") == 0) ? "<" :
+        NULL;
+
+    if (!operatorStr) {
+        fprintf(stderr, "Unsupported comparison operator: %s\n", expr->comparisonOp.operator);
+        free(leftOperand);
+        free(rightOperand);
+        free(tac);
+        return NULL;
+    }
+
+    tac->op = strdup(operatorStr);
+    tac->arg1 = leftOperand;
+    tac->arg2 = rightOperand;
+    tac->result = createTempVar();
+    tac->next = NULL;
+
+    appendTAC(&tacHead, tac);
+    printf("Generated TAC for comparison: %s = %s %s %s\n", tac->result, tac->arg1, tac->op, tac->arg2);
+    return tac;
+}
+
+
+        case NodeType_LogicalOp: {
+            printf("Generating TAC for logical operation: %s\n", expr->logicalOp.operator);
+
+            TAC* leftTAC = generateTACForExpr(expr->logicalOp.left);
+            TAC* rightTAC = generateTACForExpr(expr->logicalOp.right);
+
+            char* leftResult = leftTAC ? leftTAC->result : createOperand(expr->logicalOp.left);
+            char* rightResult = rightTAC ? rightTAC->result : createOperand(expr->logicalOp.right);
+
+            TAC* tac = (TAC*)malloc(sizeof(TAC));
+            tac->op = strdup(expr->logicalOp.operator);  // "&&" or "||"
+
+            tac->arg1 = leftResult;
+            tac->arg2 = rightResult;
+            tac->result = createTempVar();
+            tac->next = NULL;
+
+            appendTAC(&tacHead, tac);
+            printf("Generated TAC for logical operation: %s = %s %s %s\n", tac->result, tac->arg1, tac->op, tac->arg2);
+
+            return tac;
+        }
+     
 
         default:
             fprintf(stderr, "Unsupported node type in expression (Node Type: %d)\n", expr->type);
@@ -572,6 +620,10 @@ char* createOperand(ASTNode* node) {
     switch (node->type) {
         case NodeType_SimpleExpr: {
             char* buffer = malloc(20);
+            if (!buffer) {
+                fprintf(stderr, "Memory allocation failed for SimpleExpr operand.\n");
+                return NULL;
+            }
             if (node->simpleExpr.valueType == 'i') {
                 snprintf(buffer, 20, "%d", node->simpleExpr.intValue);
             } else if (node->simpleExpr.valueType == 'f') {
@@ -584,47 +636,37 @@ char* createOperand(ASTNode* node) {
             return buffer;
         }
 
+
         case NodeType_SimpleID:
+            printf("Created operand for SimpleID: %s\n", node->simpleID.name);
             return strdup(node->simpleID.name);
 
         case NodeType_BinOp:
+        case NodeType_LogicalOp:
+        case NodeType_ComparisonOp:
         case NodeType_FuncCall: {
-            // Generate TAC for complex expressions and return result variable
             TAC* exprTAC = generateTACForExpr(node);
-            if (exprTAC == NULL) {
+            if (!exprTAC || !exprTAC->result) {
                 fprintf(stderr, "Error generating TAC for expression\n");
                 return NULL;
             }
+            printf("Generated operand for complex expression: %s\n", exprTAC->result);
             return exprTAC->result;
         }
-
-        case NodeType_ArrayAccess: {
-            // Generate TAC for array access
-            TAC* arrayAccessTAC = generateTACForExpr(node);
-            if (!arrayAccessTAC || !arrayAccessTAC->result) {
-                fprintf(stderr, "Error generating TAC for array access expression\n");
-                return NULL;
-            }
-            return strdup(arrayAccessTAC->result);
-        }
         case NodeType_BoolLiteral: {
-            char* buffer = malloc(6); // Enough for "true" or "false"
-            snprintf(buffer, 6, "%s", node->boolLiteral.value ? "true" : "false");
-            return buffer; // Return "true" or "false" as string
-        }
-        case NodeType_LogicalOp: {
-            TAC* logicalTAC = generateTACForExpr(node);
-            if (!logicalTAC || !logicalTAC->result) {
-                fprintf(stderr, "Error: Failed to generate TAC for LogicalOp.\n");
-                return NULL;
-            }
-            return logicalTAC->result; // Return the result temp variable
-        }
+        char* buffer = malloc(6); // Enough for "true" or "false"
+        snprintf(buffer, 6, "%s", node->boolLiteral.value ? "true" : "false");
+        return buffer;
+    }
+
         default:
             fprintf(stderr, "Unsupported node type in operand creation (Node Type: %d)\n", node->type);
             return NULL;
     }
 }
+
+
+
 
 
 

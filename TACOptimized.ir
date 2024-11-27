@@ -1,0 +1,6 @@
+b = 15.500000
+t5 = 10 == 10
+t5 if L0
+write b
+0.000000 if L3
+write b

@@ -1,33 +1,14 @@
 void main() {
-    int a;
-    float b;
-    int l;
+    int x;
+    int y;
     bool result;
-    float c;
 
-    a = 10;
-    b = 15.5;
+    x = 10;
+    y = 5;
 
-    l = intfunc();
-
-    if (l == 10) {
-        write a;
+    if (x > 5 && y < 7) {
+        write x;
     } else {
-        write b;
+        write y;
     }
-
-    c = floatfunc();
-    if (c == 25.0) {
-        write c;
-    } else {
-        write b;
-    }
-}
-
-int intfunc() {
-    return 10;
-}
-
-float floatfunc() {
-    return 12.5 * 2;
 }

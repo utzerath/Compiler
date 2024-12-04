@@ -1178,6 +1178,7 @@ bool constantPropagation(TAC** head) {
                 funcRet = funcRet->next;
             }
         }
+
         else {
                 // For other operations, attempt to replace arg1 and arg2 with constants
                 // Replace arg1 if it's a variable with a known constant value
@@ -1263,6 +1264,93 @@ bool constantPropagation(TAC** head) {
                         }
                     }
                 }
+
+                // Inside your constantPropagation function, after handling logical operations
+                else if ((strcmp(current->op, "==") == 0 || strcmp(current->op, "!=") == 0 ||
+                        strcmp(current->op, "<") == 0 || strcmp(current->op, ">") == 0 ||
+                        strcmp(current->op, "<=") == 0 || strcmp(current->op, ">=") == 0) &&
+                        ((isNumericConstant(current->arg1) && isNumericConstant(current->arg2)) ||
+                        (isBooleanConstant(current->arg1) && isBooleanConstant(current->arg2)))) {
+
+                    bool result = false;
+
+                    // Handle numeric comparisons
+                    if (isNumericConstant(current->arg1) && isNumericConstant(current->arg2)) {
+                        double left = atof(current->arg1);
+                        double right = atof(current->arg2);
+
+                        if (strcmp(current->op, "==") == 0) {
+                            result = (left == right);
+                        } else if (strcmp(current->op, "!=") == 0) {
+                            result = (left != right);
+                        } else if (strcmp(current->op, "<") == 0) {
+                            result = (left < right);
+                        } else if (strcmp(current->op, ">") == 0) {
+                            result = (left > right);
+                        } else if (strcmp(current->op, "<=") == 0) {
+                            result = (left <= right);
+                        } else if (strcmp(current->op, ">=") == 0) {
+                            result = (left >= right);
+                        }
+                    }
+                    // Handle boolean comparisons
+                    else if (isBooleanConstant(current->arg1) && isBooleanConstant(current->arg2)) {
+                        bool left = strcmp(current->arg1, "true") == 0;
+                        bool right = strcmp(current->arg2, "true") == 0;
+
+                        if (strcmp(current->op, "==") == 0) {
+                            result = (left == right);
+                        } else if (strcmp(current->op, "!=") == 0) {
+                            result = (left != right);
+                        } else {
+                            // Other comparison operators are not applicable for booleans
+                            current = current->next;
+                            continue;
+                        }
+                    } else {
+                        // Types are incompatible for comparison
+                        current = current->next;
+                        continue;
+                    }
+
+                    // Replace the operation with the resulting constant
+                    safeStrReplace(&current->arg1, result ? "true" : "false");
+                    safeStrReplace(&current->op, "=");
+                    safeStrReplace(&current->arg2, NULL);
+                    changed = localChanged = true;
+
+                    // Map the result variable to the constant value
+                    if (current->result != NULL && strlen(current->result) > 0) {
+                        // Update or add the mapping
+                        VarValue* var = varTable;
+                        bool found = false;
+                        while (var != NULL) {
+                            if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
+                                // Update existing entry
+                                free(var->value);
+                                var->value = strdup(current->arg1);
+                                found = true;
+                                printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                                break;
+                            }
+                            var = var->next;
+                        }
+                        if (!found) {
+                            // Add new entry to varTable
+                            VarValue* newVar = malloc(sizeof(VarValue));
+                            newVar->varName = strdup(current->result);
+                            newVar->index = NULL;  // Scalar variable
+                            newVar->value = strdup(current->arg1);
+                            newVar->next = varTable;
+                            varTable = newVar;
+                            printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
+                        }
+                    }
+                    // Continue to the next instruction
+                    current = current->next;
+                    continue;
+                }
+
 
                 // Invalidate mapping if the operation assigns to a variable
                 if (current->result != NULL && strlen(current->result) > 0) {

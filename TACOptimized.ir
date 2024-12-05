@@ -1,6 +1,11 @@
+a = 10
 b = 15.500000
-t5 = 10 == 10
-t5 if L0
+L1 = true ifFalse
+write a
+L0 =  goto
 write b
-0.000000 if L3
+c = 25.000000
+L3 = true ifFalse
+write c
+L2 =  goto
 write b

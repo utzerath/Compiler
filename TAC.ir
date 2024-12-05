@@ -9,22 +9,18 @@ b = 15.500000
 t4 = call intfunc
 l = t4
 t5 = l == 10
-if t5 L0
-goto L2
-label L0
+ifFalse t5 goto L1
 write a
-goto L1
-label L2
-write b
+goto L0
 label L1
+write b
+label L0
 t6 = call floatfunc
 c = t6
 t7 = c == 25.000000
-if t7 L3
-goto L5
-label L3
+ifFalse t7 goto L3
 write c
-goto L4
-label L5
+goto L2
+label L3
 write b
-label L4
+label L2

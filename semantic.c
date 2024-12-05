@@ -56,7 +56,18 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             printf("Processing Block Statement\n");
             semanticAnalysis(node->blockStmt.stmtList, symTab); // Analyze the statements within the block
             break;
+        case NodeType_SimpleID:  // Node Type 3
+            printf("Processing Identifier: %s\n", node->simpleID.name);
+            // Check if the identifier is declared
+            if (!lookupSymbol(symTab, node->simpleID.name, symTab->currentScopeLevel)) {
+                fprintf(stderr, "Semantic error: Undeclared variable '%s'.\n", node->simpleID.name);
+            }
+            break;
 
+        case NodeType_SimpleExpr:  // Node Type 4
+            printf("Processing Simple Expression: %d\n", node->simpleExpr.intValue);
+            // No further action needed for literals
+            break;
         case NodeType_FuncDecl:
             currentFunctionName = strdup(node->funcDecl.name);
             if (strcmp(node->funcDecl.name, "main") == 0) {
@@ -290,8 +301,7 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             semanticAnalysis(node->funcDeclList.funcDecl, symTab);
             semanticAnalysis(node->funcDeclList.funcDeclList, symTab);
             break;
-
-        case NodeType_IfStmt: {
+case NodeType_IfStmt: {
     printf("Generating TAC for if statement\n");
 
     // Generate TAC for the condition
@@ -301,57 +311,116 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
         return;
     }
 
-    // Create labels
-    char* trueLabel = createLabel(); // Label for true branch
-    char* endLabel = createLabel();  // End label for the entire if-else
-    char* falseLabel = node->ifStmt.falseBranch ? createLabel() : endLabel;
+    char* endLabel = createLabel();
 
-    // Add conditional jump to true branch
-    TAC* ifJump = (TAC*)malloc(sizeof(TAC));
-    ifJump->op = strdup("if");
-    ifJump->arg1 = strdup(conditionTAC->result); // Condition result
-    ifJump->arg2 = strdup(trueLabel);           // Jump to true label
-    ifJump->result = NULL;
-    appendTAC(&tacHead, ifJump);
+    if (!node->ifStmt.falseBranch) {
+        // if (condition) { ... } with no else
+        // ifFalse conditionResult goto endLabel
+        TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
+        ifFalseTac->op = strdup("ifFalse");
+        ifFalseTac->arg1 = strdup(conditionTAC->result);
+        ifFalseTac->arg2 = NULL;
+        ifFalseTac->result = strdup(endLabel);
+        ifFalseTac->next = NULL;
+        appendTAC(&tacHead, ifFalseTac);
 
-    // Unconditional jump to false branch or end
-    TAC* gotoFalse = (TAC*)malloc(sizeof(TAC));
-    gotoFalse->op = strdup("goto");
-    gotoFalse->arg1 = strdup(falseLabel); // Jump to false label or end
-    gotoFalse->arg2 = NULL;
-    gotoFalse->result = NULL;
-    appendTAC(&tacHead, gotoFalse);
+        // then-block
+        semanticAnalysis(node->ifStmt.trueBranch, symTab);
 
-    // True branch
-    appendLabelTAC(trueLabel); // Mark the true branch
-    semanticAnalysis(node->ifStmt.trueBranch, symTab);
+        // end label
+        appendLabelTAC(endLabel);
+    } else {
+        // if (condition) { ... } else { ... }
+        char* elseLabel = createLabel();
 
-    // Jump to the end if there’s a false branch
-    if (node->ifStmt.falseBranch) {
+        // ifFalse conditionResult goto elseLabel
+        TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
+        ifFalseTac->op = strdup("ifFalse");
+        ifFalseTac->arg1 = strdup(conditionTAC->result);
+        ifFalseTac->arg2 = NULL;
+        ifFalseTac->result = strdup(elseLabel);
+        ifFalseTac->next = NULL;
+        appendTAC(&tacHead, ifFalseTac);
+
+        // then-block
+        semanticAnalysis(node->ifStmt.trueBranch, symTab);
+
+        // goto endLabel
         TAC* gotoEnd = (TAC*)malloc(sizeof(TAC));
         gotoEnd->op = strdup("goto");
-        gotoEnd->arg1 = strdup(endLabel);
+        gotoEnd->arg1 = NULL;
         gotoEnd->arg2 = NULL;
-        gotoEnd->result = NULL;
+        gotoEnd->result = strdup(endLabel);
+        gotoEnd->next = NULL;
         appendTAC(&tacHead, gotoEnd);
-    }
 
-    // False branch (if it exists)
-    if (node->ifStmt.falseBranch) {
-        appendLabelTAC(falseLabel); // Mark the false branch
+        // else label
+        appendLabelTAC(elseLabel);
         semanticAnalysis(node->ifStmt.falseBranch, symTab);
-    }
 
-    // End label
-    appendLabelTAC(endLabel); // Mark the end of the if-else structure
+        // end label
+        appendLabelTAC(endLabel);
+    }
 
     break;
 }
 
+        
+case NodeType_ComparisonOp:
+            printf("Processing Comparison Operation: %s\n", node->comparisonOp.operator);
+            // Perform semantic analysis on the left and right operands
+            semanticAnalysis(node->comparisonOp.left, symTab);
+            semanticAnalysis(node->comparisonOp.right, symTab);
+            break;
+case NodeType_WhileStmt: {
+            printf("Processing While Statement\n");
+
+            // Generate labels for the start and end of the loop
+            char* startLabel = createLabel();
+            char* endLabel = createLabel();
+
+            // Append the start label to the TAC
+            appendLabelTAC(startLabel);
+
+            // Perform semantic analysis and generate TAC for the condition
+            TAC* conditionTAC = generateTACForExpr(node->whileStmt.condition);
+            if (!conditionTAC || !conditionTAC->result) {
+                fprintf(stderr, "Error: Failed to generate TAC for while loop condition.\n");
+                return;
+            }
+
+            // Create the conditional jump to exit the loop if the condition is false
+            TAC* ifFalseJump = (TAC*)malloc(sizeof(TAC));
+            ifFalseJump->op = strdup("ifFalse");
+            ifFalseJump->arg1 = strdup(conditionTAC->result); // The result of the condition evaluation
+            ifFalseJump->arg2 = NULL;
+            ifFalseJump->result = strdup(endLabel); // Jump to endLabel if condition is false
+            ifFalseJump->next = NULL;
+            appendTAC(&tacHead, ifFalseJump);
+
+            // Perform semantic analysis on the loop body, generating TAC as needed
+            semanticAnalysis(node->whileStmt.body, symTab);
+
+            // Unconditional jump back to the start of the loop
+            TAC* gotoStart = (TAC*)malloc(sizeof(TAC));
+            gotoStart->op = strdup("goto");
+            gotoStart->arg1 = NULL;
+            gotoStart->arg2 = NULL;
+            gotoStart->result = strdup(startLabel); // Jump back to the start label
+            gotoStart->next = NULL;
+            appendTAC(&tacHead, gotoStart);
+
+            // Append the end label to the TAC
+            appendLabelTAC(endLabel);
+
+            break;
+        }
+
+
 
 
         default:
-            fprintf(stderr, "Unknown Node Type\n");
+            fprintf(stderr, "Unknown Node Type: %d\n", node->type);
             break;
     }
 }
@@ -603,8 +672,7 @@ TAC* generateTACForExpr(ASTNode* expr) {
 
             return tac;
         }
-     
-
+        
         default:
             fprintf(stderr, "Unsupported node type in expression (Node Type: %d)\n", expr->type);
             free(instruction);
@@ -714,12 +782,15 @@ void printTACToFile(const char* filename, TAC* tac) {
                 } else {
                     fprintf(file, "return\n");
                 }
+            } else if (strcmp(current->op, "ifFalse") == 0) {
+                // Handle 'ifFalse' conditional jump
+                fprintf(file, "ifFalse %s goto %s\n", current->arg1, current->result);
             } else if (strcmp(current->op, "if") == 0) {
                 // Handle 'if' conditional jump
-                fprintf(file, "if %s %s\n", current->arg1, current->arg2);
+                fprintf(file, "if %s goto %s\n", current->arg1, current->arg2);
             } else if (strcmp(current->op, "goto") == 0) {
                 // Handle 'goto' jump
-                fprintf(file, "goto %s\n", current->arg1);
+                fprintf(file, "goto %s\n", current->result);
             } else if (strcmp(current->op, "label") == 0) {
                 // Handle 'label'
                 fprintf(file, "label %s\n", current->arg1);
@@ -753,6 +824,7 @@ void printTACToFile(const char* filename, TAC* tac) {
     fclose(file);
     printf("TAC written to %s with %d lines.\n", filename, lineNumber);
 }
+
 
 
 
@@ -871,6 +943,8 @@ void appendLabelTAC(const char* label) {
     labelTAC->arg1 = strdup(label);
     labelTAC->arg2 = NULL;
     labelTAC->result = NULL;
+    labelTAC->next = NULL;
     appendTAC(&tacHead, labelTAC);
 }
+
 

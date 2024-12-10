@@ -60,22 +60,23 @@
      VOID = 276,
      COMMA = 277,
      MAIN = 278,
-     BOOL_LITERAL = 279,
-     TYPE_BOOL = 280,
-     AND_OP = 281,
-     OR_OP = 282,
-     NOT_OP = 283,
-     IF = 284,
-     ELSE = 285,
-     AND = 286,
-     OR = 287,
-     NOT = 288,
-     EQUALS = 289,
-     NOT_EQUALS = 290,
-     LESS_THAN = 291,
-     GREATER_THAN = 292,
-     LESS_EQUAL = 293,
-     GREATER_EQUAL = 294
+     WHILE = 279,
+     BOOL_LITERAL = 280,
+     TYPE_BOOL = 281,
+     AND_OP = 282,
+     OR_OP = 283,
+     NOT_OP = 284,
+     IF = 285,
+     ELSE = 286,
+     AND = 287,
+     OR = 288,
+     NOT = 289,
+     EQUALS = 290,
+     NOT_EQUALS = 291,
+     LESS_THAN = 292,
+     GREATER_THAN = 293,
+     LESS_EQUAL = 294,
+     GREATER_EQUAL = 295
    };
 #endif
 /* Tokens.  */
@@ -100,22 +101,23 @@
 #define VOID 276
 #define COMMA 277
 #define MAIN 278
-#define BOOL_LITERAL 279
-#define TYPE_BOOL 280
-#define AND_OP 281
-#define OR_OP 282
-#define NOT_OP 283
-#define IF 284
-#define ELSE 285
-#define AND 286
-#define OR 287
-#define NOT 288
-#define EQUALS 289
-#define NOT_EQUALS 290
-#define LESS_THAN 291
-#define GREATER_THAN 292
-#define LESS_EQUAL 293
-#define GREATER_EQUAL 294
+#define WHILE 279
+#define BOOL_LITERAL 280
+#define TYPE_BOOL 281
+#define AND_OP 282
+#define OR_OP 283
+#define NOT_OP 284
+#define IF 285
+#define ELSE 286
+#define AND 287
+#define OR 288
+#define NOT 289
+#define EQUALS 290
+#define NOT_EQUALS 291
+#define LESS_THAN 292
+#define GREATER_THAN 293
+#define LESS_EQUAL 294
+#define GREATER_EQUAL 295
 
 
 
@@ -132,7 +134,7 @@ typedef union YYSTYPE
     struct ASTNode* ast; // Use ASTNode for representing AST parts, including function params and list nodes
 }
 /* Line 1529 of yacc.c.  */
-#line 136 "parser.tab.h"
+#line 138 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

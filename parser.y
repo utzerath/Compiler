@@ -53,11 +53,13 @@ Symbol* symbol = NULL;
 %token <string> VOID
 %token COMMA  // Add COMMA token
 %token MAIN
+%token WHILE
 %token BOOL_LITERAL  // Token for 'true' and 'false'
 %token TYPE_BOOL     // Represents `bool`
 %token AND_OP "&&"
 %token OR_OP "||"
 %token NOT_OP "!"
+
 
 
 
@@ -305,10 +307,8 @@ VarDecl:
 ;
 
 StmtList:
-    /* empty */ {
-        $$ = createNode(NodeType_StmtList); // Create an empty StmtList node
-        $$->stmtList.stmt = NULL;
-        $$->stmtList.stmtList = NULL;
+    /* empty */ { 
+        $$ = NULL;  // If there are no statements, make the statement list NULL instead of creating an empty node
     }
     | Stmt StmtList {
         $$ = createNode(NodeType_StmtList); // Create a new StmtList node
@@ -323,34 +323,40 @@ StmtList:
 ;
 
 
-Stmt: 
-      LValue EQ Expr SEMICOLON {
-          printf("PARSER: Recognized assignment statement\n");
-          $$ = malloc(sizeof(ASTNode));
-          $$->type = NodeType_AssignStmt;
-          $$->assignStmt.lvalue = $1;
-          $$->assignStmt.expr = $3;
-      }
+
+Stmt:
+    LValue EQ Expr SEMICOLON {
+        printf("PARSER: Recognized assignment statement\n");
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_AssignStmt;
+        $$->assignStmt.lvalue = $1;
+        $$->assignStmt.expr = $3;
+    }
     | WRITE Expr SEMICOLON { 
-          printf("PARSER: Recognized write statement\n");
-          $$ = malloc(sizeof(ASTNode));
-          $$->type = NodeType_WriteStmt;
-          $$->writeStmt.expr = $2;
-      }
+        printf("PARSER: Recognized write statement\n");
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_WriteStmt;
+        $$->writeStmt.expr = $2;
+    }
     | FuncCall SEMICOLON {
-          printf("PARSER: Recognized function call statement\n");
-          $$ = $1;
-      }
+        printf("PARSER: Recognized function call statement\n");
+        $$ = $1;
+    }
     | OPEN_BRACE StmtList CLOSE_BRACE {
-          printf("PARSER: Recognized a block statement\n");
-          $$ = malloc(sizeof(ASTNode));
-          $$->type = NodeType_BlockStmt;
-          $$->blockStmt.stmtList = $2;
-      }
+        printf("PARSER: Recognized a block statement\n");
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NodeType_BlockStmt;
+        $$->blockStmt.stmtList = $2;
+    }
     | IfStmt { 
-          $$ = $1;  // Link `IfStmt` rule to `Stmt` for conditional handling
-      }
+        $$ = $1;  // Link `IfStmt` rule to `Stmt` for conditional handling
+    }
+    | WHILE OPEN_PAREN Expr CLOSE_PAREN Stmt {  // Adding the while loop handling
+        printf("PARSER: Recognized while loop\n");
+        $$ = createWhileNode($3, $5); // $3 is the condition, $5 is the body of the loop
+    }
 ;
+
 Type:
     TYPE         { $$ = $1; }         // For standard types like `int`, `float`
   | TYPE_BOOL    { $$ = "bool"; }     // For `bool` type

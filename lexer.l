@@ -140,6 +140,14 @@ ws          {delim}+
             return RETURN;
         }
 
+"while" {
+    words++; chars += yyleng;
+    printf("%s : WHILE\n", yytext);
+    yylval.string = strdup(yytext); 
+    return WHILE;
+}
+
+
 "write" {words++; chars += yyleng;
             printf("%s : WRITE\n", yytext);
             yylval.string = strdup(yytext); 
@@ -248,6 +256,7 @@ ws          {delim}+
           yylval.character = yytext[0]; 
           return CLOSE_BRACKET;
         }
+        
 
 {ws}        {chars += yyleng;}
 \n        {lines++; chars = 0;}

@@ -12,3 +12,11 @@ void main() {
         write y;
     }
 }
+
+int intfunc() {
+    return 10;
+}
+
+float floatfunc() {
+    return 12.5 * 2;
+}

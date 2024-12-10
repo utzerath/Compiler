@@ -246,10 +246,20 @@ void traverseAST(ASTNode* node, int level) {
         case NodeType_BoolLiteral:
             printf("Bool: %s\n", node->boolLiteral.value ? "true" : "false");
             break;
+
+        case NodeType_WhileStmt:
+            printf("WhileStmt\n");
+            printf("-- Condition:\n");
+            traverseAST(node->whileStmt.condition, level + 1); // Traverse the condition of the while loop
+            printf("-- Body:\n");
+            traverseAST(node->whileStmt.body, level + 1); // Traverse the body (statements inside the loop)
+            break;
+
             
         default:
             printf("Unknown node type: %d\n", node->type); // Print unknown node types
             return; // Stop further processing on invalid nodes
+        
     }
 }
 
@@ -356,7 +366,11 @@ void freeAST(ASTNode* node) {
             freeAST(node->argList.arg); // Free the argument node
             freeAST(node->argList.next); // Free the next argument
             break;
-
+        case NodeType_WhileStmt:  // Add case for WhileStmt
+            printf("Freeing WhileStmt\n");
+            freeAST(node->whileStmt.condition); // Free the condition expression
+            freeAST(node->whileStmt.body); // Free the body (statements inside the loop)
+            break;
         default:
             printf("Unknown node type: %d\n", node->type);
             break;
@@ -486,6 +500,11 @@ ASTNode* createNode(NodeType type) {
             freeAST(newNode->comparisonOp.left);
             freeAST(newNode->comparisonOp.right);
             break;
+
+        case NodeType_WhileStmt:  // New case for while loop
+            newNode->whileStmt.condition = NULL; // Initialize condition
+            newNode->whileStmt.body = NULL;      // Initialize body (statements inside the loop)
+            break;
         // Add cases for any additional node types you've defined
         default:
             break;
@@ -608,6 +627,12 @@ ASTNode* createIDNode(const char* name) {
 ASTNode* createBoolNode(int value) {
     ASTNode* node = createNode(NodeType_BoolLiteral);  // Use NodeType_BoolLiteral
     node->boolLiteral.value = value;                   // Set to 1 for true, 0 for false
+    return node;
+}
+ASTNode* createWhileNode(ASTNode* condition, ASTNode* body) {
+    ASTNode* node = createNode(NodeType_WhileStmt);
+    node->whileStmt.condition = condition;
+    node->whileStmt.body = body;
     return node;
 }
 

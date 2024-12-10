@@ -29,7 +29,8 @@ typedef enum {
     NodeType_IfStmt,          // New node type for if statements
     NodeType_LogicalOp,       // New node type for logical operations
     NodeType_ComparisonOp,   // New node type for comparison operations
-    NodeType_BoolLiteral
+    NodeType_BoolLiteral,
+    NodeType_WhileStmt
 } NodeType;
 
 // Single typedef and struct definition for ASTNode
@@ -165,6 +166,10 @@ typedef struct ASTNode {
         struct {
             int value;    // 1 for true, 0 for false
         } boolLiteral;
+        struct {
+            struct ASTNode* condition; // Condition for the while loop
+            struct ASTNode* body;      // Body of the loop (statements inside the loop)
+        } whileStmt;
 
     };
 } ASTNode;
@@ -187,6 +192,7 @@ ASTNode* createLogicalNode(const char* operator, ASTNode* left, ASTNode* right);
 ASTNode* createComparisonNode(const char* operator, ASTNode* left, ASTNode* right);
 ASTNode* createIDNode(const char* name);
 ASTNode* createBoolNode(int value);
+ASTNode* createWhileNode(ASTNode* condition, ASTNode* body);
 
 void freeAST(ASTNode* node);
 void traverseAST(ASTNode* node, int level);

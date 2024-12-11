@@ -1,11 +1,4 @@
 a = 10
-b = 15.500000
-L1 = true ifFalse
 write a
-L0 =  goto
-write b
 c = 25.000000
-L3 = true ifFalse
 write c
-L2 =  goto
-write b

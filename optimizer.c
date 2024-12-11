@@ -431,20 +431,26 @@ bool evaluateBooleanConstant(const char* str) {
     exit(EXIT_FAILURE);
 }
 
+
 void simplifyControlFlow(TAC** head) {
     TAC* current = *head;
     TAC* prev = NULL;
 
     while (current != NULL) {
-        // Check for 'if' statements with constant conditions
-        if (current->op != NULL && strcmp(current->op, "if") == 0 && current->arg1 != NULL) {
+        // Handle ifFalse statements with constant conditions
+        if (current->op && strcmp(current->op, "ifFalse") == 0 && current->arg1) {
             if (isBooleanConstant(current->arg1)) {
-                bool conditionValue = evaluateBooleanConstant(current->arg1);
+                bool condVal = evaluateBooleanConstant(current->arg1); 
+                // condVal == true means condition is true
+                // condVal == false means condition is false
 
-                if (conditionValue) {
-                    // Condition is true; remove the 'if' and proceed to the target label
-                    TAC* temp = current;
-                    current = current->next;  // Move to the next instruction
+                char* jumpLabel = current->result; // The label to jump to if condition is false
+                TAC* temp = current;
+
+                if (condVal == true) {
+                    // ifFalse true goto L: never jumps
+                    // Remove this instruction as it's a no-op
+                    current = current->next;
                     if (prev == NULL) {
                         *head = current;
                     } else {
@@ -452,22 +458,13 @@ void simplifyControlFlow(TAC** head) {
                     }
                     freeTACNode(temp);
 
-                    // Remove the 'goto' that represents the 'else' branch
-                    if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0) {
-                        temp = current;
-                        current = current->next;
-                        if (prev == NULL) {
-                            *head = current;
-                        } else {
-                            prev->next = current;
-                        }
-                        freeTACNode(temp);
-                    }
-                    continue;  // Continue without updating prev
+                    // The 'then' block always executes now, so we just continue normally.
+                    continue;
+
                 } else {
-                    // Condition is false; remove the 'if' and skip the 'then' block
-                    TAC* temp = current;
-                    current = current->next;  // Move to the next instruction
+                    // ifFalse false goto L: always jumps to L
+                    // Remove this instruction
+                    current = current->next;
                     if (prev == NULL) {
                         *head = current;
                     } else {
@@ -475,43 +472,41 @@ void simplifyControlFlow(TAC** head) {
                     }
                     freeTACNode(temp);
 
-                    // Remove the code inside the 'then' block until the 'goto' (which skips over the 'else' block)
-                    while (current != NULL && !(current->op != NULL && strcmp(current->op, "goto") == 0)) {
-                        temp = current;
+                    // Now skip the 'then' block code until we reach the jumpLabel.
+                    // We'll remove everything until we find a label matching jumpLabel.
+                    while (current != NULL) {
+                        // If we encounter the target label, stop removing.
+                        if (current->op && strcmp(current->op, "label") == 0 &&
+                            current->arg1 && strcmp(current->arg1, jumpLabel) == 0) {
+                            break;
+                        }
+                        // Remove the current instruction as it belongs to the 'then' block that never executes.
+                        TAC* toDelete = current;
                         current = current->next;
                         if (prev == NULL) {
                             *head = current;
                         } else {
                             prev->next = current;
                         }
-                        freeTACNode(temp);
+                        freeTACNode(toDelete);
                     }
 
-                    // Remove the 'goto' that skips over the 'else' block
-                    if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0) {
-                        temp = current;
-                        current = current->next;
-                        if (prev == NULL) {
-                            *head = current;
-                        } else {
-                            prev->next = current;
-                        }
-                        freeTACNode(temp);
-                    }
-                    continue;  // Continue without updating prev
+                    // Now current is either NULL or at the label we jump to.
+                    continue;
                 }
             }
         }
 
-        // Remove unreachable code after unconditional 'goto'
-        if (current != NULL && current->op != NULL && strcmp(current->op, "goto") == 0 && current->arg1 != NULL) {
-            char* targetLabel = current->arg1;
+        // Handle unconditional gotos
+        // Goto target label is now in current->result
+        if (current && current->op && strcmp(current->op, "goto") == 0 && current->result) {
+            char* targetLabel = current->result;
             TAC* temp = current->next;
 
-            // Check if the target label is immediately next
-            if (temp != NULL && temp->op != NULL && strcmp(temp->op, "label") == 0 &&
-                strcmp(temp->arg1, targetLabel) == 0) {
-                // Remove both the 'goto' and the label
+            // If next is 'label' and matches targetLabel, remove both goto and label
+            if (temp && temp->op && strcmp(temp->op, "label") == 0 &&
+                temp->arg1 && strcmp(temp->arg1, targetLabel) == 0) {
+                // Remove the goto and label
                 TAC* toDeleteGoto = current;
                 TAC* toDeleteLabel = temp;
 
@@ -524,21 +519,18 @@ void simplifyControlFlow(TAC** head) {
 
                 freeTACNode(toDeleteGoto);
                 freeTACNode(toDeleteLabel);
-
-                // Do not update prev, continue with the current instruction
-                continue;
+                continue; 
             } else {
-                // Remove code until we reach the target label
+                // Remove unreachable code until we hit the target label
                 TAC* tempPrev = current;
                 bool labelFound = false;
-
                 while (temp != NULL) {
-                    if (temp->op != NULL && strcmp(temp->op, "label") == 0 &&
-                        strcmp(temp->arg1, targetLabel) == 0) {
+                    if (temp->op && strcmp(temp->op, "label") == 0 &&
+                        temp->arg1 && strcmp(temp->arg1, targetLabel) == 0) {
                         labelFound = true;
                         break;
                     } else {
-                        // Remove the current instruction as it's unreachable
+                        // Remove unreachable code
                         TAC* toDelete = temp;
                         temp = temp->next;
                         tempPrev->next = temp;
@@ -557,23 +549,24 @@ void simplifyControlFlow(TAC** head) {
             }
         }
 
-        // Remove labels that are not targets of any jumps
-        if (current != NULL && current->op != NULL && strcmp(current->op, "label") == 0) {
+        // Remove labels that are not targeted by any goto or ifFalse
+        if (current && current->op && strcmp(current->op, "label") == 0 && current->arg1) {
             bool isTarget = false;
-            // Check if any 'goto' or 'if' statements target this label
-            TAC* temp = *head;
-            while (temp != NULL) {
-                if (temp->op != NULL && (strcmp(temp->op, "goto") == 0 || strcmp(temp->op, "if") == 0)) {
-                    if ((temp->arg1 != NULL && strcmp(temp->arg1, current->arg1) == 0) ||
-                        (temp->arg2 != NULL && strcmp(temp->arg2, current->arg1) == 0)) {
+            TAC* t = *head;
+            while (t != NULL) {
+                if (t->op) {
+                    // Check if the label is referenced by ifFalse or goto
+                    if ((strcmp(t->op, "goto") == 0 && t->result && strcmp(t->result, current->arg1) == 0) ||
+                        (strcmp(t->op, "ifFalse") == 0 && t->result && strcmp(t->result, current->arg1) == 0)) {
                         isTarget = true;
                         break;
                     }
                 }
-                temp = temp->next;
+                t = t->next;
             }
+
             if (!isTarget) {
-                // Remove the label
+                // Remove this label
                 TAC* toDelete = current;
                 current = current->next;
                 if (prev == NULL) {
@@ -582,7 +575,7 @@ void simplifyControlFlow(TAC** head) {
                     prev->next = current;
                 }
                 freeTACNode(toDelete);
-                continue;  // Continue without updating prev
+                continue;
             }
         }
 
@@ -1208,6 +1201,8 @@ bool constantPropagation(TAC** head) {
                         var = var->next;
                     }
                 }
+
+
 
                 // Now, if the operation is a logical operation, and both arguments are constants, we can compute the result
                 if ((strcmp(current->op, "!") == 0 || strcmp(current->op, "&&") == 0 || strcmp(current->op, "||") == 0) &&

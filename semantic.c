@@ -301,66 +301,67 @@ void semanticAnalysis(ASTNode* node, SymbolTable* symTab) {
             semanticAnalysis(node->funcDeclList.funcDecl, symTab);
             semanticAnalysis(node->funcDeclList.funcDeclList, symTab);
             break;
-case NodeType_IfStmt: {
-    printf("Generating TAC for if statement\n");
+            
+        case NodeType_IfStmt: {
+            printf("Generating TAC for if statement\n");
 
-    // Generate TAC for the condition
-    TAC* conditionTAC = generateTACForExpr(node->ifStmt.condition);
-    if (!conditionTAC || !conditionTAC->result) {
-        fprintf(stderr, "Error: Failed to generate TAC for if condition.\n");
-        return;
-    }
+            // Generate TAC for the condition
+            TAC* conditionTAC = generateTACForExpr(node->ifStmt.condition);
+            if (!conditionTAC || !conditionTAC->result) {
+                fprintf(stderr, "Error: Failed to generate TAC for if condition.\n");
+                return;
+            }
 
-    char* endLabel = createLabel();
+        char* endLabel = createLabel();
 
-    if (!node->ifStmt.falseBranch) {
-        // if (condition) { ... } with no else
-        // ifFalse conditionResult goto endLabel
-        TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
-        ifFalseTac->op = strdup("ifFalse");
-        ifFalseTac->arg1 = strdup(conditionTAC->result);
-        ifFalseTac->arg2 = NULL;
-        ifFalseTac->result = strdup(endLabel);
-        ifFalseTac->next = NULL;
-        appendTAC(&tacHead, ifFalseTac);
+        if (!node->ifStmt.falseBranch) {
+            // if (condition) { ... } with no else
+            // ifFalse conditionResult goto endLabel
+            TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
+            ifFalseTac->op = strdup("ifFalse");
+            ifFalseTac->arg1 = strdup(conditionTAC->result);
+            ifFalseTac->arg2 = NULL;
+            ifFalseTac->result = strdup(endLabel);
+            ifFalseTac->next = NULL;
+            appendTAC(&tacHead, ifFalseTac);
 
-        // then-block
-        semanticAnalysis(node->ifStmt.trueBranch, symTab);
+            // then-block
+            semanticAnalysis(node->ifStmt.trueBranch, symTab);
 
-        // end label
-        appendLabelTAC(endLabel);
-    } else {
-        // if (condition) { ... } else { ... }
-        char* elseLabel = createLabel();
+            // end label
+            appendLabelTAC(endLabel);
+        } else {
+            // if (condition) { ... } else { ... }
+            char* elseLabel = createLabel();
 
-        // ifFalse conditionResult goto elseLabel
-        TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
-        ifFalseTac->op = strdup("ifFalse");
-        ifFalseTac->arg1 = strdup(conditionTAC->result);
-        ifFalseTac->arg2 = NULL;
-        ifFalseTac->result = strdup(elseLabel);
-        ifFalseTac->next = NULL;
-        appendTAC(&tacHead, ifFalseTac);
+            // ifFalse conditionResult goto elseLabel
+            TAC* ifFalseTac = (TAC*)malloc(sizeof(TAC));
+            ifFalseTac->op = strdup("ifFalse");
+            ifFalseTac->arg1 = strdup(conditionTAC->result);
+            ifFalseTac->arg2 = NULL;
+            ifFalseTac->result = strdup(elseLabel);
+            ifFalseTac->next = NULL;
+            appendTAC(&tacHead, ifFalseTac);
 
-        // then-block
-        semanticAnalysis(node->ifStmt.trueBranch, symTab);
+            // then-block
+            semanticAnalysis(node->ifStmt.trueBranch, symTab);
 
-        // goto endLabel
-        TAC* gotoEnd = (TAC*)malloc(sizeof(TAC));
-        gotoEnd->op = strdup("goto");
-        gotoEnd->arg1 = NULL;
-        gotoEnd->arg2 = NULL;
-        gotoEnd->result = strdup(endLabel);
-        gotoEnd->next = NULL;
-        appendTAC(&tacHead, gotoEnd);
+            // goto endLabel
+            TAC* gotoEnd = (TAC*)malloc(sizeof(TAC));
+            gotoEnd->op = strdup("goto");
+            gotoEnd->arg1 = NULL;
+            gotoEnd->arg2 = NULL;
+            gotoEnd->result = strdup(endLabel);
+            gotoEnd->next = NULL;
+            appendTAC(&tacHead, gotoEnd);
 
-        // else label
-        appendLabelTAC(elseLabel);
-        semanticAnalysis(node->ifStmt.falseBranch, symTab);
+            // else label
+            appendLabelTAC(elseLabel);
+            semanticAnalysis(node->ifStmt.falseBranch, symTab);
 
-        // end label
-        appendLabelTAC(endLabel);
-    }
+            // end label
+            appendLabelTAC(endLabel);
+        }
 
     break;
 }

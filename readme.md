@@ -99,7 +99,7 @@ void main() {
     if (a < b) {
         if ((b + c) > d) {
             write a;
-        } else if ((a + d) < c) {
+        } if ((a + d) < c) {
             write b;
         } else {
             write c;

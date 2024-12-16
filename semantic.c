@@ -3,6 +3,74 @@
 #include <stdbool.h>
 #include <string.h>  // For strdup and strcmp
 
+void removeTACNode(TAC** head, TAC* nodeToRemove) {
+    if (!head || !*head || !nodeToRemove) return;
+
+    TAC* current = *head;
+    TAC* prev = NULL;
+
+    while (current) {
+        if (current == nodeToRemove) {
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                *head = current->next; // If the node to remove is the head
+            }
+            free(current->op);
+            free(current->arg1);
+            free(current->arg2);
+            free(current->result);
+            free(current);
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+}
+
+TAC* copyTACNode(TAC* original) {
+    if (!original) return NULL;
+
+    TAC* copy = (TAC*)malloc(sizeof(TAC));
+    if (!copy) {
+        fprintf(stderr, "Memory allocation failed for TAC copy\n");
+        exit(EXIT_FAILURE);
+    }
+
+    copy->op = original->op ? strdup(original->op) : NULL;
+    copy->arg1 = original->arg1 ? strdup(original->arg1) : NULL;
+    copy->arg2 = original->arg2 ? strdup(original->arg2) : NULL;
+    copy->result = original->result ? strdup(original->result) : NULL;
+    copy->next = NULL; // New node is not connected to any other node yet
+
+    return copy;
+}
+
+TAC* insertAfterTACNode(TAC** head, TAC* insertionPoint, TAC* newNode) {
+    if (!newNode) return NULL;
+
+    if (!head || !*head) {
+        // If the list is empty, make the new node the head
+        *head = newNode;
+        return newNode;
+    }
+
+    if (!insertionPoint) {
+        // If insertionPoint is NULL, insert at the beginning
+        newNode->next = *head;
+        *head = newNode;
+        return newNode;
+    }
+
+    // Insert after the specified node
+    newNode->next = insertionPoint->next;
+    insertionPoint->next = newNode;
+
+    return newNode;
+}
+
+
+
 int tempVars[20]; // Array for tracking temp variables
 static int tempVarCounter = 0;
 static char* currentFunctionName = NULL;

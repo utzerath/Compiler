@@ -22,6 +22,9 @@ Basic Optimizations:
 #include <stdbool.h>
 #include <ctype.h>
 
+typedef struct LoopInfo LoopInfo; // <== added
+
+
 // Forward declarations for functions used before they are defined
 void addToFreeList(void* ptr);
 bool parseArrayAccess(const char* expr, char** arrayName, char** index);
@@ -60,5 +63,39 @@ void freeTACList(TAC* head);
 void foldFloatOperation(TAC* current, float result);
 void foldOperation(TAC* current, int result);
 bool isFloatConstant(const char* str);
+
+typedef struct VarValue {
+    char* varName;
+    char* index;  // NULL for scalar variables, non-NULL for array elements
+    char* value;
+    struct VarValue* next;
+} VarValue;
+
+
+void removeTACNode(TAC** head, TAC* nodeToRemove);
+TAC* copyTACNode(TAC* original);
+TAC* insertAfterTACNode(TAC** head, TAC* insertionPoint, TAC* newNode);
+
+
+
+typedef struct LoopInfo {
+    char* startLabel;
+    char* endLabel;
+    TAC* startTAC;     // Pointer to the TAC node of startLabel
+    TAC* endTAC;       // Pointer to the TAC node of endLabel
+    TAC* ifFalseTAC;   // The ifFalse condition node
+    TAC* gotoStartTAC; // The goto that returns to startLabel
+    char* loopVar;      // The loop variable (e.g., "i")
+    char* operator;     // The comparison operator (e.g., "<")
+    int bound;          // The loop bound (e.g., 3)
+    bool incrementResolved; // Whether the loop increment has been determined
+    int increment;          // The loop increment value
+    struct LoopInfo* next;
+} LoopInfo;
+
+
+
+
+bool isInsideLoop(TAC* instr, LoopInfo* loops);
 
 #endif // OPTIMIZER_H

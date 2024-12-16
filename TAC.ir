@@ -1,26 +1,12 @@
-t0 = 10
-return t0
-t1 = 12.500000
-t2 = 2
-t3 = t1 * t2
-return t3
-a = 10
-b = 15.500000
-t4 = call intfunc
-l = t4
-t5 = l == 10
-ifFalse t5 goto L1
-write a
+i = 0
+j = 0
+label L0
+t0 = i < 3
+ifFalse t0 goto L1
+j = i
+t1 = 1
+t2 = i + t1
+i = t2
 goto L0
 label L1
-write b
-label L0
-t6 = call floatfunc
-c = t6
-t7 = c == 25.000000
-ifFalse t7 goto L3
-write c
-goto L2
-label L3
-write b
-label L2
+write j

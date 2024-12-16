@@ -6,6 +6,10 @@
     #include <string.h>
     #include <stdint.h>
 
+
+
+LoopInfo* whileList = NULL;
+
 // Data structure to map function names to their return variables
 typedef struct FunctionReturn {
     char* functionName;
@@ -14,6 +18,14 @@ typedef struct FunctionReturn {
 } FunctionReturn;
 
 FunctionReturn* functionReturns = NULL;
+
+typedef struct LoopCondition {
+    char* loopVar;     // The variable controlling the loop (e.g., "x")
+    char* operator;    // The comparison operator (e.g., "<", "<=")
+    int bound;         // The integer bound (e.g., 10)
+    bool valid;        // Whether we successfully extracted info
+} LoopCondition;
+
 
 void addFunctionReturn(const char* functionName, const char* returnVar) {
     if (functionName == NULL || returnVar == NULL) {
@@ -87,6 +99,8 @@ void addToFreeList(void* ptr) {
     node->next = freeList;
     freeList = node;
 }
+
+
 
 // Function to decrement reference count and free if refCount reaches zero
 void removeFromFreeList(void* ptr) {
@@ -190,6 +204,7 @@ bool isUsedLaterFinal(TAC* head, const char* varName) {
     return false;
 }
 
+
 void deadCodeEliminationFinal(TAC** head, bool freeAll) {
     TAC* current = *head;
     TAC* prev = NULL;
@@ -248,6 +263,13 @@ bool deadCodeElimination(TAC** head, bool freeAll) {
     TAC* prev = NULL;
 
     while (current != NULL) {
+        // If inside loop, skip removal
+        if (isInsideLoop(current, whileList)) {
+            prev = current;
+            current = current->next;
+            continue;
+        }
+
         printf("Processing TAC in deadCodeElimination: op='%s', result='%s'\n",
             current->op ? current->op : "NULL",
             current->result ? current->result : "NULL");
@@ -327,6 +349,92 @@ bool isUsedLater(TAC* head, const char* varName) {
     }
     return false;
 }
+
+bool isInsideLoop(TAC* instr, LoopInfo* loops) {
+    while (loops) {
+        // The loop body is between ifFalse->next and gotoStartNode (excluding both)
+        TAC* start = loops->ifFalseTAC ? loops->ifFalseTAC->next : NULL;
+        TAC* end = loops->gotoStartTAC;
+
+        if (!start || !end) {
+            loops = loops->next;
+            continue;
+        }
+
+        TAC* current = start;
+        while (current != NULL && current != end) {
+            if (current == instr) {
+                // Check if increment has been resolved
+                if (!loops->incrementResolved) {
+                    return false; // Allow optimization inside unresolved loops
+                }
+                return true; // Skip if increment is resolved
+            }
+            current = current->next;
+        }
+        loops = loops->next;
+    }
+    return false;
+}
+
+
+void detectWhileLoops(TAC* head, LoopInfo** whileList) {
+    TAC* current = head;
+    while (current != NULL) {
+        if (current->op && strcmp(current->op, "label") == 0) {
+            // Potential start of a loop
+            char* startLabel = current->arg1;
+            TAC* search = current->next;
+            TAC* ifFalseNode = NULL;
+            TAC* endLabelNode = NULL;
+            TAC* gotoStartNode = NULL;
+            char* endLabel = NULL;
+
+            // Look for pattern: ifFalse <condition> goto <endLabel>
+            // then later a goto <startLabel>
+            // and finally the label <endLabel>
+            while (search != NULL) {
+                if (search->op && strcmp(search->op, "ifFalse") == 0 && search->result) {
+                    // Found ifFalse; potential condition node
+                    ifFalseNode = search;
+                    endLabel = search->result;
+                }
+
+                if (search->op && strcmp(search->op, "goto") == 0 && search->result &&
+                    startLabel && strcmp(search->result, startLabel) == 0) {
+                    // Found a goto back to startLabel - marks the loop closure
+                    gotoStartNode = search;
+                }
+
+                if (search->op && strcmp(search->op, "label") == 0 && endLabel &&
+                    strcmp(search->arg1, endLabel) == 0) {
+                    // Found the end label
+                    endLabelNode = search;
+                    // We've found our pattern: label start, ifFalse ... goto endLabel,
+                    // ... (body) ..., goto start, label endLabel
+                    break;
+                }
+
+                search = search->next;
+            }
+
+            if (ifFalseNode && gotoStartNode && endLabelNode) {
+                // We have identified a loop structure
+                LoopInfo* newLoop = malloc(sizeof(LoopInfo));
+                newLoop->startLabel = strdup(startLabel);
+                newLoop->endLabel = strdup(endLabel);
+                newLoop->startTAC = current;
+                newLoop->ifFalseTAC = ifFalseNode;
+                newLoop->gotoStartTAC = gotoStartNode;
+                newLoop->endTAC = endLabelNode;
+                newLoop->next = *whileList;
+                *whileList = newLoop;
+            }
+        }
+        current = current->next;
+    }
+}
+
 
 
 
@@ -437,6 +545,17 @@ void simplifyControlFlow(TAC** head) {
     TAC* prev = NULL;
 
     while (current != NULL) {
+
+        if (isInsideLoop(current, whileList)) {
+            // If inside loop, only process if this is the ifFalse line (the condition line)
+            if (!(current->op && strcmp(current->op, "ifFalse") == 0)) {
+                // Not ifFalse, skip this instruction
+                prev = current;
+                current = current->next;
+                continue;
+            }
+        }
+
         // Handle ifFalse statements with constant conditions
         if (current->op && strcmp(current->op, "ifFalse") == 0 && current->arg1) {
             if (isBooleanConstant(current->arg1)) {
@@ -650,6 +769,16 @@ bool constantFolding(TAC** head) {
     bool changed = false;
 
     while (current != NULL) {
+
+        // If inside loop, skip unless this is a condition line we allow
+        if (isInsideLoop(current, whileList)) {
+            // Let's say we only allow `ifFalse` instructions to be processed inside loops
+            if (!(current->op && strcmp(current->op, "ifFalse") == 0)) {
+                current = current->next;
+                continue;
+            }
+        }
+
         // Debug: Print the exact op string with delimiters
         if (current->op != NULL) {
             printf("Current op: '%s'\n", current->op);
@@ -874,6 +1003,33 @@ char* trimWhitespace(const char* str) {
 }
 
 
+bool isWhileLoopCondition(TAC* instr, LoopInfo* loops) {
+    while (loops) {
+        TAC* ifFalseNode = loops->ifFalseTAC;
+        if (ifFalseNode && ifFalseNode->arg1 != NULL) {
+            // Condition variable used by ifFalse
+            char* condVar = ifFalseNode->arg1;
+
+            // Find the instruction that sets condVar before ifFalseNode
+            // Start searching from loops->startTAC up to but not including ifFalseNode
+            TAC* search = loops->startTAC;
+            while (search != NULL && search != ifFalseNode) {
+                // If this line assigns condVar, it's the condition line
+                // Typically: condVar = something (like t0 = i < 3)
+                if (search->result && strcmp(search->result, condVar) == 0) {
+                    // We found the condition computation line
+                    if (search == instr) {
+                        return true;
+                    }
+                }
+                search = search->next;
+            }
+        }
+        loops = loops->next;
+    }
+    return false;
+}
+
 
 
 bool constantPropagation(TAC** head) {
@@ -890,11 +1046,18 @@ bool constantPropagation(TAC** head) {
 
     VarValue* varTable = NULL;
 
+
     do {
         localChanged = false;
         TAC* current = *head;
 
         while (current != NULL) {
+
+            if (isInsideLoop(current, whileList)) {
+               
+                current = current->next;
+                continue;
+            }
 
         // Handle 'return' instructions
         if (current->op != NULL && strcmp(current->op, "return") == 0) {
@@ -1172,6 +1335,30 @@ bool constantPropagation(TAC** head) {
             }
         }
 
+        // ************* ADDED CODE FOR WHILE (ifFalse) *************
+        else if (current->op != NULL && strcmp(current->op, "ifFalse") == 0) {
+            // Check if this ifFalse belongs to a while loop
+            bool isWhileCondition = isWhileLoopCondition(current, whileList);
+
+                // Attempt to propagate constants into the condition
+                if (!isWhileCondition && current->arg1 != NULL && !isBooleanConstant(current->arg1)) {
+                    // Try replacing it with a known constant from varTable
+                    VarValue* var = varTable;
+                    while (var != NULL) {
+                        if (var->index == NULL && strcmp(var->varName, current->arg1) == 0) {
+                            printf("Propagating constant: Replacing '%s' with '%s' in ifFalse condition\n", current->arg1, var->value);
+                            safeStrReplace(&current->arg1, var->value);
+                            changed = localChanged = true;
+                            break;
+                        }
+                        var = var->next;
+                    }
+                }
+                // If now arg1 is a boolean constant ("true" or "false"), the loop condition is known at compile-time.
+                // Control flow simplification can remove or simplify the loop later.
+        }
+            // *********** END OF ADDED CODE ***********
+
         else {
                 // For other operations, attempt to replace arg1 and arg2 with constants
                 // Replace arg1 if it's a variable with a known constant value
@@ -1204,70 +1391,81 @@ bool constantPropagation(TAC** head) {
 
 
 
-                // Now, if the operation is a logical operation, and both arguments are constants, we can compute the result
-                if ((strcmp(current->op, "!") == 0 || strcmp(current->op, "&&") == 0 || strcmp(current->op, "||") == 0) &&
-                    (isBooleanConstant(current->arg1)) &&
-                    (current->arg2 == NULL || isBooleanConstant(current->arg2))) {
+                            // Now, if the operation is a logical operation, and both arguments are constants, we can compute the result
+            if ((strcmp(current->op, "!") == 0 || strcmp(current->op, "&&") == 0 || strcmp(current->op, "||") == 0) &&
+                isBooleanConstant(current->arg1) &&
+                (current->arg2 == NULL || isBooleanConstant(current->arg2))) {
 
-                    bool left = strcmp(current->arg1, "true") == 0;
-                    bool right = current->arg2 ? (strcmp(current->arg2, "true") == 0) : false;
-                    bool result;
-
-                    if (strcmp(current->op, "!") == 0) {
-                        result = !left;
-                    } else if (strcmp(current->op, "&&") == 0) {
-                        result = left && right;
-                    } else if (strcmp(current->op, "||") == 0) {
-                        result = left || right;
-                    } else {
-                        // Unsupported logical operator
-                        current = current->next;
-                        continue;
-                    }
-
-                    // Replace the operation with the resulting constant
-                    safeStrReplace(&current->arg1, result ? "true" : "false");
-                    safeStrReplace(&current->op, "=");
-                    safeStrReplace(&current->arg2, NULL);
-                    changed = localChanged = true;
-
-                    // Map the result variable to the constant value
-                    if (current->result != NULL && strlen(current->result) > 0) {
-                        // Update or add the mapping
-                        VarValue* var = varTable;
-                        bool found = false;
-                        while (var != NULL) {
-                            if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
-                                // Update existing entry
-                                free(var->value);
-                                var->value = strdup(current->arg1);
-                                found = true;
-                                printf("Updated mapping: %s = %s\n", var->varName, var->value);
-                                break;
-                            }
-                            var = var->next;
-                        }
-                        if (!found) {
-                            // Add new entry to varTable
-                            VarValue* newVar = malloc(sizeof(VarValue));
-                            newVar->varName = strdup(current->result);
-                            newVar->index = NULL;  // Scalar variable
-                            newVar->value = strdup(current->arg1);
-                            newVar->next = varTable;
-                            varTable = newVar;
-                            printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
-                        }
-                    }
+                // Check if this is part of a while loop condition
+                if (isWhileLoopCondition(current, whileList)) {
+                    // If it's a while loop condition, do not finalize to a constant.
+                    // Just continue without changing 'current'.
+                    printf("Skipping while loop condition\n");
+                    current = current->next;
+                    continue;
                 }
 
-                // Inside your constantPropagation function, after handling logical operations
-                else if ((strcmp(current->op, "==") == 0 || strcmp(current->op, "!=") == 0 ||
-                        strcmp(current->op, "<") == 0 || strcmp(current->op, ">") == 0 ||
-                        strcmp(current->op, "<=") == 0 || strcmp(current->op, ">=") == 0) &&
-                        ((isNumericConstant(current->arg1) && isNumericConstant(current->arg2)) ||
-                        (isBooleanConstant(current->arg1) && isBooleanConstant(current->arg2)))) {
+                bool left = strcmp(current->arg1, "true") == 0;
+                bool right = current->arg2 ? (strcmp(current->arg2, "true") == 0) : false;
+                bool result;
 
-                    bool result = false;
+                if (strcmp(current->op, "!") == 0) {
+                    result = !left;
+                } else if (strcmp(current->op, "&&") == 0) {
+                    result = left && right;
+                } else {
+                    // "||"
+                    result = left || right;
+                }
+
+                // Replace the operation with the resulting constant
+                safeStrReplace(&current->arg1, result ? "true" : "false");
+                safeStrReplace(&current->op, "=");
+                safeStrReplace(&current->arg2, NULL);
+                changed = localChanged = true;
+
+                // Update mapping as before
+                if (current->result != NULL && strlen(current->result) > 0) {
+                    VarValue* var = varTable;
+                    bool found = false;
+                    while (var != NULL) {
+                        if (var->index == NULL && strcmp(var->varName, current->result) == 0) {
+                            free(var->value);
+                            var->value = strdup(current->arg1);
+                            found = true;
+                            printf("Updated mapping: %s = %s\n", var->varName, var->value);
+                            break;
+                        }
+                        var = var->next;
+                    }
+                    if (!found) {
+                        VarValue* newVar = malloc(sizeof(VarValue));
+                        newVar->varName = strdup(current->result);
+                        newVar->index = NULL;
+                        newVar->value = strdup(current->arg1);
+                        newVar->next = varTable;
+                        varTable = newVar;
+                        printf("Added mapping: %s = %s\n", newVar->varName, newVar->value);
+                    }
+                }
+            }
+
+            // After handling logical operations, do the same check for comparison operations:
+            else if ((strcmp(current->op, "==") == 0 || strcmp(current->op, "!=") == 0 ||
+                    strcmp(current->op, "<") == 0 || strcmp(current->op, ">") == 0 ||
+                    strcmp(current->op, "<=") == 0 || strcmp(current->op, ">=") == 0) &&
+                    ((isNumericConstant(current->arg1) && isNumericConstant(current->arg2)) ||
+                    (isBooleanConstant(current->arg1) && isBooleanConstant(current->arg2)))) {
+
+                // Check if this comparison is part of a while loop condition
+                if (isWhileLoopCondition(current, whileList)) {
+                    // If part of a while loop condition, do not replace with a constant.
+                    printf("Skipping while loop condition\n");
+                    current = current->next;
+                    continue;
+                }
+                
+                bool result = false;
 
                     // Handle numeric comparisons
                     if (isNumericConstant(current->arg1) && isNumericConstant(current->arg2)) {
@@ -1366,7 +1564,10 @@ bool constantPropagation(TAC** head) {
             }
 
             current = current->next;
+
+            
         }
+
 
     } while (localChanged);
 
@@ -1385,6 +1586,196 @@ bool constantPropagation(TAC** head) {
 }
 
 
+LoopCondition extractLoopCondition(TAC* startTAC, TAC* ifFalseTAC) {
+    printf("Extracting loop condition...\n");
+    LoopCondition cond = {NULL, NULL, 0, false};
+    TAC* search = startTAC;
+    while (search && search != ifFalseTAC) {
+        printf("Checking TAC: %p, op: %s, result: %s, arg1: %s, arg2: %s\n",
+               search, search->op, search->result, search->arg1, search->arg2);
+        if (search->result && strcmp(search->result, ifFalseTAC->arg1) == 0) {
+            printf("Found condition variable: %s\n", search->result);
+            if (search->op && (strcmp(search->op, "<") == 0 || strcmp(search->op, "<=") == 0 ||
+                               strcmp(search->op, ">") == 0 || strcmp(search->op, ">=") == 0 ||
+                               strcmp(search->op, "==") == 0 || strcmp(search->op, "!=") == 0)) {
+                cond.operator = strdup(search->op);
+                if (search->arg1 && search->arg2 && isNumericConstant(search->arg2)) {
+                    cond.loopVar = strdup(search->arg1);
+                    cond.bound = atoi(search->arg2);
+                    cond.valid = true;
+                    printf("Condition parsed: loopVar=%s, operator=%s, bound=%d\n", cond.loopVar, cond.operator, cond.bound);
+                }
+            }
+            break;
+        }
+        search = search->next;
+    }
+    return cond;
+}
+
+int extractLoopIncrement(TAC* loopBodyStart, TAC* loopBodyEnd, const char* loopVar, VarValue* varTable) {
+    printf("Extracting loop increment...\n");
+    TAC* current = loopBodyStart;
+    char* intermediateVar = NULL; // To track temporaries like `t2`
+    char* incrementVar = NULL;   // To track the constant increment (e.g., `t1`)
+
+    while (current && current != loopBodyEnd) {
+        printf("Checking TAC: %p, op: %s, result: %s, arg1: %s, arg2: %s\n",
+               current, current->op, current->result, current->arg1, current->arg2);
+
+        // Look for an assignment to the loop variable
+        if (current->op && strcmp(current->op, "=") == 0 &&
+            current->result && strcmp(current->result, loopVar) == 0 &&
+            current->arg1) {
+            intermediateVar = strdup(current->arg1);
+            printf("Intermediate variable detected: %s\n", intermediateVar);
+        }
+
+        // Look for a computation involving the loop variable or an intermediate
+        if (current->op && (strcmp(current->op, "+") == 0 || strcmp(current->op, "-") == 0) &&
+            current->result && intermediateVar && strcmp(current->result, intermediateVar) == 0 &&
+            current->arg1 && strcmp(current->arg1, loopVar) == 0 &&
+            current->arg2) {
+            incrementVar = strdup(current->arg2);
+            printf("Increment variable detected: %s\n", incrementVar);
+        }
+
+        // Check if the incrementVar is a constant
+        if (incrementVar && isNumericConstant(incrementVar)) {
+            int incr = atoi(incrementVar);
+            if (strcmp(current->op, "-") == 0) {
+                incr = -incr;
+            }
+            printf("Increment parsed: %d\n", incr);
+            free(intermediateVar);
+            free(incrementVar);
+            return incr;
+        }
+
+        current = current->next;
+    }
+
+    free(intermediateVar);
+    free(incrementVar);
+    printf("No clear increment pattern found.\n");
+    return 0;
+}
+
+
+int findInitialValue(TAC* head, const char* varName, TAC* loopStart) {
+    printf("Finding initial value for variable: %s\n", varName);
+    TAC* current = head;
+    int lastValueFound = 0;
+    bool found = false;
+    while (current && current != loopStart) {
+        printf("Checking TAC: %p, op: %s, result: %s, arg1: %s\n",
+               current, current->op, current->result, current->arg1);
+        if (current->op && strcmp(current->op, "=") == 0 &&
+            current->result && strcmp(current->result, varName) == 0 &&
+            current->arg1 && isNumericConstant(current->arg1)) {
+            lastValueFound = atoi(current->arg1);
+            found = true;
+            printf("Initial value found: %d\n", lastValueFound);
+        }
+        current = current->next;
+    }
+    if (!found) {
+        printf("Initial value not found. Defaulting to 0.\n");
+    }
+    return found ? lastValueFound : 0;
+}
+
+int computeIterationCount(LoopCondition cond, int initVal, int increment) {
+    printf("Computing iteration count...\n");
+    if (!cond.valid || increment == 0) {
+        printf("Invalid condition or zero increment. Returning -1.\n");
+        return -1;
+    }
+    if ((strcmp(cond.operator, "<") == 0) && increment > 0) {
+        if (initVal >= cond.bound) {
+            printf("Initial value exceeds or equals bound. Returning 0 iterations.\n");
+            return 0;
+        }
+        int count = (cond.bound - initVal) / increment;
+        printf("Iteration count calculated: %d\n", count);
+        return count;
+    } else if ((strcmp(cond.operator, "<=") == 0) && increment > 0) {
+        if (initVal > cond.bound) {
+            printf("Initial value exceeds bound. Returning 0 iterations.\n");
+            return 0;
+        }
+        int count = ((cond.bound - initVal) / increment) + 1;
+        printf("Iteration count calculated: %d\n", count);
+        return count;
+    }
+    printf("Unsupported scenario. Returning -1.\n");
+    return -1;
+}
+
+void unrollLoop(TAC** head, LoopInfo* loop, int iterationCount) {
+    printf("Unrolling loop for %d iterations...\n", iterationCount);
+    if (iterationCount <= 0) {
+        printf("No unrolling needed. Exiting.\n");
+        return;
+    }
+
+    TAC* bodyStart = loop->ifFalseTAC->next;
+    TAC* bodyEnd = loop->gotoStartTAC;
+    removeTACNode(head, loop->ifFalseTAC);
+    removeTACNode(head, loop->gotoStartTAC);
+    removeTACNode(head, loop->endTAC);
+
+    TAC* insertionPoint = loop->startTAC->next;
+    for (int i = 0; i < iterationCount; i++) {
+        printf("Unrolling iteration %d...\n", i + 1);
+        TAC* current = bodyStart;
+        while (current && current != bodyEnd) {
+            TAC* copy = copyTACNode(current);
+            insertionPoint = insertAfterTACNode(head, insertionPoint, copy);
+            current = current->next;
+        }
+    }
+    printf("Loop unrolling complete.\n");
+}
+
+
+void unrollWhileLoops(TAC** head) {
+    LoopInfo* loop = whileList;
+    while (loop) {
+        // Extract condition info
+        LoopCondition cond = extractLoopCondition(loop->startTAC, loop->ifFalseTAC);
+        if (!cond.valid) {
+            printf("Cannot extract loop condition\n");
+            loop = loop->next;
+            continue; // cannot unroll
+        }
+
+        // Find the increment pattern
+        TAC* bodyStart = loop->ifFalseTAC->next;
+        TAC* bodyEnd = loop->gotoStartTAC;
+
+        // Find initial value
+        int initVal = findInitialValue(*head, cond.loopVar, loop->startTAC);
+        
+        // Compute iteration count
+        int iterationCount = computeIterationCount(cond, initVal, 1);
+        if (iterationCount < 0) {
+            printf("Cannot determine iteration count\n");
+            // Cannot determine iteration count
+            loop = loop->next;
+            continue;
+        }
+
+        // Unroll the loop
+        unrollLoop(head, loop, iterationCount);
+
+        loop = loop->next;
+    }
+}
+
+
+
+
 
 
 void optimizeTAC(TAC** head) {
@@ -1401,6 +1792,7 @@ void optimizeTAC(TAC** head) {
             printf("Constant propagation applied\n");
         }
 
+
         // Apply constant folding multiple times until no changes
         while (constantFolding(head)) {
             changed = true;
@@ -1408,6 +1800,8 @@ void optimizeTAC(TAC** head) {
         }
         simplifyControlFlow(head);
         printf("Control flow simplification applied\n");
+
+        
 
         // Apply dead code elimination
         if (deadCodeElimination(head, false)) {
@@ -1419,7 +1813,7 @@ void optimizeTAC(TAC** head) {
     } while (changed);  // Repeat until no more changes are made
 
 
-    deadCodeEliminationFinal(head, false);
+    //deadCodeEliminationFinal(head, false);
 
     printOptimizedTAC("TACOptimized.ir", *head);
     printf("Optimized TAC written to TACOptimized.ir\n");
